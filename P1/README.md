@@ -26,7 +26,7 @@ API REST desarrollada con **FastAPI** y **PostgreSQL** para gestionar las solici
 - **Servidor:** Uvicorn
 
 ## Estructura de la práctica
-
+```bash
 P1/
 ├── src/
 │ ├── models/
@@ -44,6 +44,7 @@ P1/
 ├── .env
 ├── README.md
 └── PROMPTS.md
+```
 
 ## Endpoints disponibles
 
