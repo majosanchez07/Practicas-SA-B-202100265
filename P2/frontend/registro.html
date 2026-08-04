@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang='es'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Registro</title>
+    <link rel='stylesheet' href='style.css'>
+</head>
+<body>
+    <div class='container'>
+        <h1>Registro</h1>
+        <div class='form-group'>
+            <label for='nombre'>Nombre completo</label>
+            <input type='text' id='nombre' placeholder='Tu nombre completo'>
+        </div>
+        <div class='form-group'>
+            <label for='correo'>Correo electronico</label>
+            <input type='email' id='correo' placeholder='tucorreo@ejemplo.com'>
+        </div>
+        <div class='form-group'>
+            <label for='contrasena'>Contrasena</label>
+            <input type='password' id='contrasena' placeholder='Tu contrasena'>
+        </div>
+        <div class='form-group'>
+            <label for='rol'>Rol</label>
+            <select id='rol'>
+                <option value='cliente'>Cliente</option>
+                <option value='admin'>Admin</option>
+            </select>
+        </div>
+        <button onclick='registrar()'>Registrarse</button>
+        <div id='mensaje' class='mensaje'></div>
+        <div class='link'>
+            Ya tienes cuenta? <a href='login.html'>Inicia sesion</a>
+        </div>
+    </div>
+    <script src='app.js'></script>
+</body>
+</html>

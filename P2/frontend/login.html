@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang='es'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Login</title>
+    <link rel='stylesheet' href='style.css'>
+</head>
+<body>
+    <div class='container'>
+        <h1>Iniciar Sesion</h1>
+        <div class='form-group'>
+            <label for='correo'>Correo electronico</label>
+            <input type='email' id='correo' placeholder='tucorreo@ejemplo.com'>
+        </div>
+        <div class='form-group'>
+            <label for='contrasena'>Contrasena</label>
+            <input type='password' id='contrasena' placeholder='Tu contrasena'>
+        </div>
+        <button onclick='login()'>Iniciar Sesion</button>
+        <div id='mensaje' class='mensaje'></div>
+        <div class='link'>
+            No tienes cuenta? <a href='registro.html'>Registrate</a>
+        </div>
+    </div>
+    <script src='app.js'></script>
+</body>
+</html>

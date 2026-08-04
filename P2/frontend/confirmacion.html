@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang='es'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Login Exitoso</title>
+    <link rel='stylesheet' href='style.css'>
+</head>
+<body>
+    <div class='container'>
+        <h1>Bienvenido!</h1>
+        <div class='info-card'>
+            <p>Nombre: <span id='nombre-usuario'>Cargando...</span></p>
+            <p>Rol: <span id='rol-usuario'>Cargando...</span></p>
+        </div>
+        <div id='accesos'></div>
+        <button onclick='probarRutaAdminCliente()'>Probar Ruta Admin y Cliente</button>
+        <button id='btn-admin' class='secondary' onclick='probarRutaAdmin()'>Probar Ruta Solo Admin</button>
+        <div id='mensaje' class='mensaje'></div>
+        <button class='secondary' onclick='logout()'>Cerrar Sesion</button>
+    </div>
+    <script src='app.js'></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang='es'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Panel Admin</title>
+    <link rel='stylesheet' href='style.css'>
+</head>
+<body>
+    <div class='container'>
+        <h1>Panel Administrador</h1>
+        <div class='info-card'>
+            <p>Esta ruta es exclusiva para <span>Administradores</span></p>
+            <p>Acceso concedido correctamente</p>
+        </div>
+        <div class='info-card'>
+            <p>Rol verificado: <span id='rol-verificado'>Cargando...</span></p>
+        </div>
+        <button class='secondary' onclick="window.location.href='confirmacion.html'">Volver</button>
+        <button class='secondary' onclick='logout()'>Cerrar Sesion</button>
+    </div>
+    <script src='app.js'></script>
+</body>
+</html>
