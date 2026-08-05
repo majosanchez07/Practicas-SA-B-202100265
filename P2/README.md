@@ -1,311 +1,631 @@
-# Universidad de San Carlos de Guatemala
-## Facultad de Ingeniería
-### Ingeniería en Ciencias y Sistemas
-#### Software Avanzado — Sección B
+
+# Practica 2 - Autenticacion y Autorizacion
+
+**Universidad de San Carlos de Guatemala**
+**Facultad de Ingenieria**
+**Ingenieria en Ciencias y Sistemas**
+**Software Avanzado - Seccion B**
 
 **Nombre:** Maria Jose Tebalan Sanchez
-**Carné:** 202100265
-
-## Práctica # 1
+**Carne:** 202100265
 
 ---
 
-# API REST - Gestión de Solicitudes Operativas
+## Descripcion del Proyecto
 
-## Descripción del proyecto
+Sistema full-stack de autenticacion y autorizacion para una aplicacion web, implementando JWT almacenado en cookies HTTP-only, encriptacion AES para datos sensibles, autorizacion por roles (Admin/Cliente) y un microservicio independiente de autorizacion con retry loop.
 
-API REST desarrollada con **FastAPI** y **PostgreSQL** para gestionar las solicitudes operativas de una academia ficticia. El sistema permite registrar, consultar, actualizar y eliminar solicitudes, aplicando los principios SOLID y buenas prácticas de código limpio, con el apoyo crítico de herramientas de Inteligencia Artificial generativa.
+---
 
-## Tecnologías utilizadas
+## Stack Tecnologico
 
-- **Lenguaje:** Python 3.14
+### Backend (auth-service)
+- **Lenguaje:** Python 3.13
 - **Framework:** FastAPI
 - **ORM:** SQLAlchemy
 - **Base de datos:** PostgreSQL
-- **Driver de BD:** psycopg (v3)
+- **Autenticacion:** JWT (python-jose)
+- **Encriptacion:** AES (pycryptodome)
 - **Servidor:** Uvicorn
 
-## Estructura de la práctica
-```bash
-P1/
-├── src/
-│ ├── models/
-│ │ ├── solicitud.py # Modelo de datos (entidad)
-│ │ └── database.py # Conexión a la base de datos
-│ ├── schemas/
-│ │ └── solicitud_schema.py # Validación de entrada/salida (Pydantic)
-│ ├── services/
-│ │ └── solicitud_service.py # Lógica de negocio
-│ ├── routes/
-│ │ └── solicitudes.py # Endpoints de la API
-│ └── config.py # Configuración de la app
-├── main.py # Punto de entrada
-├── requirements.txt
-├── .env
-├── README.md
-└── PROMPTS.md
+**Ventajas:**
+- FastAPI genera documentacion interactiva automaticamente
+- Python-jose facilita la creacion y validacion de JWT
+- Pycryptodome ofrece implementacion robusta de AES
+- SQLAlchemy permite cambiar de base de datos sin modificar logica
+
+**Desventajas:**
+- Python puede ser mas lento que lenguajes compilados en alta concurrencia
+- La gestion manual de cookies requiere configuracion cuidadosa
+
+### Backend (authorization-service)
+- **Lenguaje:** Python 3.13
+- **Framework:** FastAPI
+- **Servidor:** Uvicorn (puerto 8001)
+
+**Ventajas:**
+- Microservicio independiente, desacoplado del servicio de autenticacion
+- Facil de escalar horizontalmente
+- Retry loop con backoff configurable ante fallas temporales
+
+**Desventajas:**
+- Agrega latencia de red al flujo de autorizacion
+- Requiere manejo de errores de comunicacion entre servicios
+
+### Frontend
+- **HTML5, CSS3, JavaScript vanilla**
+
+**Ventajas:**
+- Sin dependencias externas, carga rapida
+- Compatible con cualquier navegador moderno
+
+**Desventajas:**
+- Sin framework, el codigo puede volverse dificil de mantener en proyectos grandes
+
+### Base de datos
+- **PostgreSQL**
+
+**Ventajas:**
+- Robusto, confiable y con soporte para tipos de datos avanzados
+- Excelente rendimiento en consultas complejas
+
+**Desventajas:**
+- Requiere mas configuracion inicial que SQLite
+
+---
+
+## Arquitectura del Sistema
+
+```
+Frontend (HTML/JS)
+      |
+      | HTTP REST (cookies HTTP-only)
+      |
+Auth Service (puerto 8000)
+      |
+      |--- PostgreSQL (datos encriptados con AES)
+      |
+      |--- Authorization Service (puerto 8001)
+            retry loop con backoff
 ```
 
-## Endpoints disponibles
+---
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| GET | `/solicitudes/` | Obtener todas las solicitudes |
-| POST | `/solicitudes/` | Registrar una nueva solicitud |
-| GET | `/solicitudes/{id}` | Obtener una solicitud por ID |
-| PUT | `/solicitudes/{id}` | Actualizar completamente una solicitud |
-| PATCH | `/solicitudes/{id}/estado` | Actualizar solo el estado |
-| DELETE | `/solicitudes/{id}` | Eliminar una solicitud |
+## Diagrama de Secuencia
 
-## Instalación y ejecución
+```mermaid
+sequenceDiagram
+    participant F as Frontend
+    participant A as Auth Service
+    participant Z as Authorization Service
+    participant DB as PostgreSQL
 
-```bash
-# Crear entorno virtual
+    Note over F,DB: Flujo de Registro
+    F->>A: POST /auth/registro {nombre, correo, contrasena, rol}
+    A->>A: Encriptar datos con AES
+    A->>DB: INSERT usuario encriptado
+    DB-->>A: Usuario creado
+    A-->>F: 201 Created {id, nombre, correo, rol}
+
+    Note over F,DB: Flujo de Login
+    F->>A: POST /auth/login {correo, contrasena}
+    A->>DB: SELECT usuarios
+    A->>A: Desencriptar y comparar credenciales
+    A->>A: Generar JWT con rol y sub
+    A-->>F: 200 OK + Set-Cookie: access_token (HTTP-only)
+
+    Note over F,DB: Flujo de Acceso a Ruta Protegida
+    F->>A: GET /rutas/admin (cookie automatica)
+    A->>A: Verificar JWT del cookie
+    A->>Z: POST /autorizar {token, rol_requerido}
+    Z->>Z: Decodificar JWT y validar rol
+    Z-->>A: {autorizado: true/false}
+    A-->>F: 200 OK o 403 Forbidden
+
+    Note over F,DB: Flujo de Renovacion de Token
+    F->>A: POST /auth/renovar-token (cookie expirada)
+    A->>A: Verificar si expiro dentro del periodo de gracia
+    A->>A: Generar nuevo JWT
+    A-->>F: 200 OK + nuevo Set-Cookie HTTP-only
+```
+
+---
+
+## Seguridad Implementada
+
+### JWT en Cookies HTTP-only
+El token JWT nunca es visible para el usuario ni accesible via JavaScript. Se almacena en una cookie con la flag httponly=True, lo que previene ataques XSS. El tiempo de vida y el periodo de gracia para renovacion son configurables mediante variables de entorno.
+
+### Encriptacion AES
+Todos los datos sensibles (nombre, correo, contrasena) se almacenan encriptados en la base de datos usando el algoritmo AES en modo CBC. Cada encriptacion genera un IV aleatorio, haciendo que el mismo texto produzca resultados distintos en cada operacion.
+
+### Autorizacion por Roles
+El sistema contempla dos roles: Admin y Cliente. La autorizacion se resuelve a traves de un microservicio independiente (puerto 8001), consultado mediante un retry loop con backoff configurable ante fallas temporales.
+
+### Renovacion Automatica de Token
+Cuando un JWT ha expirado pero ha transcurrido menos tiempo del periodo de gracia configurado (JWT_GRACE_PERIOD_MINUTES), el sistema genera automaticamente un nuevo token sin requerir que el usuario inicie sesion nuevamente.
+
+---
+
+## Estructura del Proyecto
+
+```
+P2/
+├── auth-service/
+│   ├── src/
+│   │   ├── models/
+│   │   │   ├── database.py
+│   │   │   └── usuario.py
+│   │   ├── schemas/
+│   │   │   └── usuario_schema.py
+│   │   ├── services/
+│   │   │   ├── auth_service.py
+│   │   │   └── encryption_service.py
+│   │   ├── routes/
+│   │   │   ├── auth.py
+│   │   │   └── protected.py
+│   │   └── config.py
+│   ├── main.py
+│   ├── requirements.txt
+│   └── .env
+├── authorization-service/
+│   ├── src/
+│   │   ├── routes/
+│   │   │   └── authorization.py
+│   │   └── config.py
+│   ├── main.py
+│   ├── requirements.txt
+│   └── .env
+├── frontend/
+│   ├── index.html
+│   ├── login.html
+│   ├── registro.html
+│   ├── confirmacion.html
+│   ├── admin.html
+│   ├── style.css
+│   └── app.js
+└── README.md
+```
+
+---
+
+## Instrucciones de Ejecucion
+
+### Requisitos previos
+- Python 3.10+
+- PostgreSQL instalado y corriendo
+- Crear la base de datos ejecutando en psql o pgAdmin:
+
+```sql
+CREATE DATABASE auth_db;
+```
+
+### 1. Auth Service (Terminal 1)
+
+```powershell
+cd P2/auth-service
 python -m venv venv
 .\venv\Scripts\Activate.ps1
-
-# Instalar dependencias
 pip install -r requirements.txt
-
-# Configurar variables de entorno en .env
-# DATABASE_URL=postgresql://usuario:contraseña@localhost:5432/solicitudes_db
-
-# Ejecutar el servidor
 python main.py
 ```
 
-La documentación interactiva estará disponible en: `http://localhost:8000/docs`
+Corre en: http://localhost:8000
+Docs: http://localhost:8000/docs
+
+### 2. Authorization Service (Terminal 2)
+
+```powershell
+cd P2/authorization-service
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python main.py
+```
+
+Corre en: http://localhost:8001
+Docs: http://localhost:8001/docs
+
+### 3. Frontend (Terminal 3)
+
+```powershell
+cd P2/frontend
+python -m http.server 3000
+```
+
+Abrir en el navegador: http://localhost:3000
+
+---
+
+## Pruebas Realizadas
+
+### Usuarios de prueba utilizados
+
+| Rol | Nombre | Correo | Contrasena |
+|-----|--------|--------|------------|
+| Admin | Maria Jose Tebalan | admin@test.com | password123 |
+| Cliente | Usuario Cliente | cliente@test.com | password123 |
+
+---
+
+### Prueba 1 - Registro de usuario Admin
+
+Endpoint: `POST /auth/registro`
+URL: http://localhost:8000/docs
+
+Body enviado:
+```json
+{
+  "nombre": "Maria Jose Tebalan",
+  "correo": "admin@test.com",
+  "contrasena": "password123",
+  "rol": "admin"
+}
+```
+
+Respuesta obtenida (201 Created):
+```json
+{
+  "id": "uuid-generado",
+  "nombre": "Maria Jose Tebalan",
+  "correo": "admin@test.com",
+  "rol": "admin",
+  "created_at": "2026-07-30T00:00:00"
+}
+```
+
+Resultado: Los datos se almacenaron encriptados con AES en la base de datos.
+
+---
+
+### Prueba 2 - Registro de usuario Cliente
+
+Endpoint: `POST /auth/registro`
+
+Body enviado:
+```json
+{
+  "nombre": "Usuario Cliente",
+  "correo": "cliente@test.com",
+  "contrasena": "password123",
+  "rol": "cliente"
+}
+```
+
+Respuesta obtenida (201 Created):
+```json
+{
+  "id": "uuid-generado",
+  "nombre": "Usuario Cliente",
+  "correo": "cliente@test.com",
+  "rol": "cliente",
+  "created_at": "2026-07-30T00:00:00"
+}
+```
+
+---
+
+### Prueba 3 - Login usuario Admin
+
+Endpoint: `POST /auth/login`
+
+Body enviado:
+```json
+{
+  "correo": "admin@test.com",
+  "contrasena": "password123"
+}
+```
+
+Respuesta obtenida (200 OK):
+```json
+{
+  "mensaje": "Login exitoso",
+  "rol": "admin",
+  "nombre": "Maria Jose Tebalan"
+}
+```
+
+Resultado: Se genero un JWT y se almaceno en una cookie HTTP-only llamada access_token, no visible para el usuario ni accesible via JavaScript.
+
+---
+
+### Prueba 4 - Login usuario Cliente
+
+Endpoint: `POST /auth/login`
+
+Body enviado:
+```json
+{
+  "correo": "cliente@test.com",
+  "contrasena": "password123"
+}
+```
+
+Respuesta obtenida (200 OK):
+```json
+{
+  "mensaje": "Login exitoso",
+  "rol": "cliente",
+  "nombre": "Usuario Cliente"
+}
+```
+
+---
+
+### Prueba 5 - Acceso a ruta Admin+Cliente con rol Admin
+
+Endpoint: `GET /rutas/admin-cliente`
+
+Resultado (200 OK):
+```json
+{
+  "mensaje": "Bienvenido",
+  "rol": "admin"
+}
+```
+
+---
+
+### Prueba 6 - Acceso a ruta solo Admin con rol Admin
+
+Endpoint: `GET /rutas/admin`
+
+Resultado (200 OK):
+```json
+{
+  "mensaje": "Bienvenido Admin",
+  "rol": "admin"
+}
+```
+
+---
+
+### Prueba 7 - Acceso a ruta Admin+Cliente con rol Cliente
+
+Endpoint: `GET /rutas/admin-cliente`
+(Con sesion iniciada como cliente@test.com)
+
+Resultado (200 OK):
+```json
+{
+  "mensaje": "Bienvenido",
+  "rol": "cliente"
+}
+```
+
+---
+
+### Prueba 8 - Acceso denegado a ruta solo Admin con rol Cliente
+
+Endpoint: `GET /rutas/admin`
+(Con sesion iniciada como cliente@test.com)
+
+Resultado (403 Forbidden):
+```json
+{
+  "detail": "Acceso denegado"
+}
+```
+
+Resultado: El microservicio de autorizacion valido correctamente el rol y denego el acceso.
+
+---
+
+### Prueba 9 - Renovacion de token
+
+Endpoint: `POST /auth/renovar-token`
+
+Con un token expirado dentro del periodo de gracia (5 minutos), el sistema genera automaticamente un nuevo JWT y lo almacena en la cookie HTTP-only.
+
+Resultado (200 OK):
+```json
+{
+  "mensaje": "Token renovado correctamente"
+}
+```
+
+---
+
+### Prueba 10 - Frontend completo
+
+1. Abrir http://localhost:3000
+2. Hacer clic en "Registrarse", completar el formulario y enviar
+3. Redireccion automatica a login.html
+4. Ingresar credenciales y hacer clic en "Iniciar Sesion"
+5. Redireccion automatica a confirmacion.html con nombre y rol del usuario
+6. Probar boton "Ruta Admin+Cliente": acceso permitido para ambos roles
+7. Probar boton "Ruta Solo Admin": acceso permitido para Admin, 403 para Cliente
+8. Hacer clic en "Cerrar Sesion": elimina la cookie y redirige a login.html
+
+---
+
+## Variables de entorno (.env auth-service)
+
+| Variable | Descripcion | Valor por defecto |
+|----------|-------------|-------------------|
+| DATABASE_URL | Conexion a PostgreSQL | postgresql://postgres:admin@localhost:5432/auth_db |
+| JWT_SECRET_KEY | Clave secreta para firmar JWT | - |
+| JWT_EXPIRATION_MINUTES | Tiempo de vida del JWT en minutos | 30 |
+| JWT_GRACE_PERIOD_MINUTES | Periodo de gracia para renovacion | 5 |
+| AES_SECRET_KEY | Clave de 32 bytes para encriptacion AES | - |
+| AUTHORIZATION_SERVICE_URL | URL del microservicio de autorizacion | http://localhost:8001 |
+| AUTHORIZATION_MAX_RETRIES | Numero maximo de reintentos | 3 |
+| AUTHORIZATION_RETRY_BACKOFF | Factor de backoff entre reintentos | 1.5 |
+
+---
+
+## Endpoints disponibles
+
+### Auth Service (puerto 8000)
+
+| Metodo | Endpoint | Descripcion | Autenticacion |
+|--------|----------|-------------|---------------|
+| POST | /auth/registro | Registrar nuevo usuario | No |
+| POST | /auth/login | Iniciar sesion | No |
+| POST | /auth/logout | Cerrar sesion | Si |
+| POST | /auth/renovar-token | Renovar JWT expirado | Si |
+| GET | /rutas/admin | Ruta exclusiva Admin | Si (Admin) |
+| GET | /rutas/admin-cliente | Ruta Admin y Cliente | Si (Admin/Cliente) |
+
+### Authorization Service (puerto 8001)
+
+| Metodo | Endpoint | Descripcion |
+|--------|----------|-------------|
+| POST | /autorizar | Validar token y rol |
 
 ---
 
 ## Aplicación de Principios SOLID
 
-A continuación se explica, con palabras propias, cómo se aplicó cada uno de los 5 principios SOLID en este proyecto, junto con la justificación de su importancia y fragmentos reales de código que evidencian su implementación.
+A continuación se detalla cómo se ha diseñado la arquitectura del sistema respetando los 5 principios SOLID para garantizar un código limpio, mantenible y escalable.
 
-### 1. S — Single Responsibility Principle (Principio de Responsabilidad Única)
+### S - Single Responsibility Principle (Principio de Responsabilidad Única)
 
-**¿Qué significa?**
+**Explicación:** Una clase, módulo o función debe tener una y solo una razón para cambiar. Esto significa que debe encargarse de una única tarea o responsabilidad específica dentro del sistema. Si un módulo hace demasiadas cosas, los cambios en una funcionalidad pueden afectar a otras de manera imprevista.
 
-Este principio establece que una clase o módulo debe tener una única razón para cambiar. Es decir, cada componente del sistema debe encargarse de una sola responsabilidad bien definida. Si una clase mezcla varias responsabilidades (por ejemplo, validar datos, acceder a la base de datos y manejar peticiones HTTP al mismo tiempo), cualquier cambio en una de esas áreas obligaría a modificar la misma clase por razones distintas, lo cual aumenta el riesgo de introducir errores y dificulta el mantenimiento.
-
-**¿Por qué es importante en este proyecto?**
-
-Al gestionar solicitudes operativas, es común que en el futuro se necesiten cambios independientes: quizás cambie la forma en que se valida un campo, o se decida usar otra base de datos, o se agregue un nuevo endpoint. Separar responsabilidades permite que estos cambios se hagan de forma aislada sin afectar el resto del sistema.
-
-**¿Cómo se aplicó?**
-
-Dividí el proyecto en capas claramente diferenciadas, cada una con una sola responsabilidad:
-
-- **Modelos** (`src/models/`): solo definen la estructura de datos que se persiste en la base de datos.
-- **Schemas** (`src/schemas/`): solo validan los datos de entrada y salida de la API.
-- **Servicios** (`src/services/`): solo contienen la lógica de negocio (crear, consultar, actualizar, eliminar).
-- **Rutas** (`src/routes/`): solo exponen los endpoints HTTP y delegan el trabajo a los servicios.
-
-Por ejemplo, `SolicitudService` se encarga exclusivamente de la lógica de negocio para interactuar con la base de datos, sin saber nada sobre HTTP, códigos de estado o formatos de petición:
+* **Archivo/Clase:** `src/services/encryption_service.py` y `src/services/auth_service.py`
+* **Justificación:** Se ha delegado toda la lógica criptográfica (AES) a un servicio independiente. El servicio de autenticación no necesita saber *cómo* se encriptan los datos (tamaño de bloque, IV, modo CBC), solo necesita utilizarlos. Si el día de mañana se cambia el algoritmo de AES a ChaCha20, solo se modifica `encryption_service.py` y la lógica de autenticación (`auth_service.py`) permanece intacta.
+* **Fragmento de código real:**
 
 ```python
-class SolicitudService:
-    """Servicio para gestionar solicitudes operativas"""
+# src/services/encryption_service.py
+from Crypto.Cipher import AES
+import os
 
-    @staticmethod
-    def crear_solicitud(db: Session, solicitud: SolicitudCreate) -> Solicitud:
-        """Crear una nueva solicitud"""
-        nueva_solicitud = Solicitud(
-            titulo=solicitud.titulo,
-            area_solicitante=solicitud.area_solicitante,
-            prioridad=solicitud.prioridad,
-            costo_estimado=solicitud.costo_estimado,
-            estado=solicitud.estado
-        )
-        db.add(nueva_solicitud)
-        db.commit()
-        db.refresh(nueva_solicitud)
-        return nueva_solicitud
+class EncryptionService:
+    def __init__(self, secret_key: bytes):
+        self.secret_key = secret_key
+
+    def encrypt_data(self, data: str) -> bytes:
+        # Única responsabilidad: Encriptar datos
+        iv = os.urandom(16)
+        cipher = AES.new(self.secret_key, AES.MODE_CBC, iv)
+        # ... lógica de padding y encriptación ...
+        return iv + ciphertext
+
+# src/services/auth_service.py
+class AuthService:
+    def __init__(self, db_session, enc_service: EncryptionService):
+        self.db = db_session
+        self.enc_service = enc_service
+
+    def registrar_usuario(self, usuario_data):
+        # Única responsabilidad: Orquestar el registro
+        encrypted_pass = self.enc_service.encrypt_data(usuario_data.contrasena)
+        # ... guardar en base de datos ...
+
 ```
 
-Mientras que la ruta (`solicitudes.py`) solo se encarga de recibir la petición HTTP, delegar el trabajo al servicio y devolver la respuesta adecuada:
+### O - Open/Closed Principle (Principio de Abierto/Cerrado)
+
+**Explicación:** Las entidades de software (clases, módulos, funciones) deben estar abiertas para su extensión, pero cerradas para su modificación. Esto significa que deberíamos poder agregar nueva funcionalidad o comportamiento sin alterar el código fuente ya existente, previniendo la introducción de nuevos bugs.
+
+* **Archivo/Clase:** `src/schemas/usuario_schema.py`
+* **Justificación:** Los esquemas de validación de Pydantic utilizan herencia de clases. Se define una clase abstracta `UsuarioBase` con los datos en común. Para crear respuestas, registros u otras variantes, se crean nuevas clases que heredan de la base. Si se necesita un nuevo tipo de usuario o una nueva vista de datos (por ejemplo, `UsuarioAdminResponse`), el código se *extiende* añadiendo una nueva clase, sin *modificar* el `UsuarioBase`.
+* **Fragmento de código real:**
 
 ```python
-@router.post("/", response_model=SolicitudResponse, status_code=status.HTTP_201_CREATED)
-def crear_solicitud(solicitud: SolicitudCreate, db: Session = Depends(get_db)):
-    """Registrar una nueva solicitud operativa"""
-    nueva_solicitud = SolicitudService.crear_solicitud(db, solicitud)
-    return nueva_solicitud
+# src/schemas/usuario_schema.py
+from pydantic import BaseModel, EmailStr
+
+class UsuarioBase(BaseModel):
+    nombre: str
+    correo: EmailStr
+    rol: str
+
+# Extendemos (Open for extension) sin modificar UsuarioBase (Closed for modification)
+class UsuarioCreate(UsuarioBase):
+    contrasena: str
+
+class UsuarioResponse(UsuarioBase):
+    id: str
+    created_at: str
+
+    class Config:
+        orm_mode = True
+
 ```
 
-Si en el futuro cambia la forma de crear una solicitud (por ejemplo, agregando una validación de negocio adicional), solo se modifica `SolicitudService`, sin tocar la ruta ni los schemas.
+### L - Liskov Substitution Principle (Principio de Sustitución de Liskov)
 
----
+**Explicación:** Los objetos de una superclase deben poder ser reemplazados por objetos de sus subclases sin que el programa se rompa o altere su comportamiento esperado. Las clases derivadas deben cumplir el "contrato" definido por su clase padre.
 
-### 2. O — Open/Closed Principle (Principio de Abierto/Cerrado)
-
-**¿Qué significa?**
-
-Este principio indica que las entidades de software (clases, módulos, funciones) deben estar **abiertas para su extensión**, pero **cerradas para su modificación**. Esto significa que se debe poder agregar nueva funcionalidad al sistema sin alterar el código que ya funciona y que ya ha sido probado.
-
-**¿Por qué es importante en este proyecto?**
-
-Un sistema de gestión de solicitudes operativas probablemente crecerá con el tiempo: podrían agregarse nuevos tipos de solicitudes, nuevos campos, o nuevas validaciones. Si cada nuevo requerimiento obliga a modificar clases ya existentes, se corre el riesgo de romper funcionalidad que ya funcionaba correctamente.
-
-**¿Cómo se aplicó?**
-
-Los schemas de Pydantic están diseñados con **herencia**, de forma que `SolicitudCreate` y `SolicitudResponse` extienden de `SolicitudBase` sin necesidad de modificar la clase base:
+* **Archivo/Clase:** `src/schemas/usuario_schema.py` (Polimorfismo en validaciones) y la manipulación en `auth_service.py`.
+* **Justificación:** Como `UsuarioCreate` y `UsuarioResponse` extienden rigurosamente de `UsuarioBase`, en cualquier función de servicio o validación interna que espere un objeto del tipo `UsuarioBase` (para leer nombre, correo o rol), podemos pasar de forma segura un `UsuarioCreate` o un `UsuarioResponse`, sabiendo que ambas subclases respetan los tipos y propiedades de la clase base sin generar excepciones (como un `AttributeError`).
+* **Fragmento de código real:**
 
 ```python
-class SolicitudBase(BaseModel):
-    """Schema base para solicitudes"""
-    titulo: str = Field(..., min_length=1, max_length=255)
-    area_solicitante: str = Field(..., min_length=1, max_length=255)
-    prioridad: int = Field(..., ge=1, le=5)
-    costo_estimado: float = Field(..., gt=0)
-    estado: str = Field(default="registrada")
+# Un validador genérico que espera la superclase
+def validar_dominio_correo(usuario: UsuarioBase) -> bool:
+    return usuario.correo.endswith("@test.com")
 
-class SolicitudCreate(SolicitudBase):
-    """Schema para crear una solicitud"""
-    pass
+# Puede recibir una subclase (UsuarioCreate) sin alterar el funcionamiento
+nuevo_usuario = UsuarioCreate(
+    nombre="Maria Jose", 
+    correo="admin@test.com", 
+    rol="admin", 
+    contrasena="pwd123"
+)
+es_valido = validar_dominio_correo(nuevo_usuario) # Retorna True de forma segura
 
-class SolicitudResponse(SolicitudBase):
-    """Schema para respuestas de solicitudes"""
-    id: UUID
-    created_at: datetime
-    updated_at: datetime
 ```
 
-Si en el futuro se necesita un nuevo tipo de schema (por ejemplo, un schema para generar reportes con campos adicionales), se puede crear una nueva clase que extienda `SolicitudBase`, sin modificar ni una sola línea de la clase original.
+### I - Interface Segregation Principle (Principio de Segregación de Interfaces)
 
-De la misma manera, `SolicitudService` está diseñado para poder **extenderse** agregando nuevos métodos estáticos (por ejemplo, un método para filtrar solicitudes por prioridad o por área solicitante) sin necesidad de modificar los métodos ya existentes como `crear_solicitud`, `actualizar_solicitud` o `eliminar_solicitud`. Esto reduce el riesgo de introducir errores en funcionalidad ya validada.
+**Explicación:** Los clientes no deben verse obligados a depender de interfaces (o esquemas de datos) que no utilizan. Es mejor crear varias interfaces específicas orientadas a un objetivo concreto, que una interfaz gigante de propósito general.
 
----
-
-### 3. L — Liskov Substitution Principle (Principio de Sustitución de Liskov)
-
-**¿Qué significa?**
-
-Este principio establece que los objetos de una clase derivada deben poder sustituir a los objetos de su clase base sin alterar el comportamiento correcto del programa. En otras palabras, si el sistema espera un objeto de un tipo determinado, debe poder recibir cualquier subtipo de ese tipo sin que el programa falle o se comporte de forma inesperada.
-
-**¿Por qué es importante en este proyecto?**
-
-En este sistema existen distintos tipos de "entrada" para actualizar una solicitud: una actualización completa y una actualización parcial (solo el estado). Es importante que el servicio que procesa estas actualizaciones pueda trabajar con cualquiera de estos schemas sin romper su lógica interna.
-
-**¿Cómo se aplicó?**
-
-`SolicitudUpdate` y `SolicitudEstadoUpdate` son schemas diseñados para actuar como una "entrada válida" en el proceso de actualización, cada uno adaptado a un contexto distinto (actualización completa vs. actualización parcial del estado), pero ambos respetan el mismo contrato: ser un objeto validado por Pydantic del cual se pueden extraer atributos de forma segura.
+* **Archivo/Clase:** `src/schemas/usuario_schema.py`
+* **Justificación:** Se han segregado las interfaces de entrada de la API. El endpoint de inicio de sesión (`/auth/login`) no requiere saber el `nombre` o el `rol` del usuario al momento de hacer el request, solo necesita `correo` y `contrasena`. En lugar de forzar al cliente frontend a enviar un solo objeto gigante `Usuario` con campos opcionales o nulos, se diseñó un esquema específico y segregado `UsuarioLogin`.
+* **Fragmento de código real:**
 
 ```python
-class SolicitudUpdate(BaseModel):
-    """Schema para actualizar una solicitud completa"""
-    titulo: Optional[str] = Field(None, min_length=1, max_length=255)
-    area_solicitante: Optional[str] = Field(None, min_length=1, max_length=255)
-    prioridad: Optional[int] = Field(None, ge=1, le=5)
-    costo_estimado: Optional[float] = Field(None, gt=0)
-    estado: Optional[str] = None
+# src/schemas/usuario_schema.py
+from pydantic import BaseModel, EmailStr
 
-class SolicitudEstadoUpdate(BaseModel):
-    """Schema para actualizar solo el estado"""
-    estado: str = Field(..., description="Nuevo estado de la solicitud")
+# Interfaz segregada exclusivamente para el proceso de Login
+class UsuarioLogin(BaseModel):
+    correo: EmailStr
+    contrasena: str
+
+# src/routes/auth.py
+@router.post("/login")
+def login(credenciales: UsuarioLogin, db: Session = Depends(get_db)):
+    # El cliente no es forzado a enviar campos que no aplican a esta acción
+    user = auth_service.authenticate(db, credenciales.correo, credenciales.contrasena)
+    # ...
+
 ```
 
-Ambos esquemas pueden ser usados por métodos del servicio a través de `.model_dump(exclude_unset=True)`, garantizando que cualquier subtipo de entrada de actualización se comporte de manera consistente sin que el servicio necesite conocer detalles internos de cada schema en particular:
+### D - Dependency Inversion Principle (Principio de Inversión de Dependencias)
+
+**Explicación:** Los módulos de alto nivel (como los enrutadores/controladores) no deben depender de los módulos de bajo nivel (como la conexión a la base de datos). Ambos deben depender de abstracciones. Los detalles concretos (implementaciones) deben depender de estas abstracciones.
+
+* **Archivo/Clase:** `src/routes/auth.py` y `src/models/database.py`
+* **Justificación:** Los endpoints (módulo de alto nivel) no abren la conexión a PostgreSQL directamente ni instancian el motor de SQLAlchemy. En su lugar, el framework FastAPI inyecta la dependencia a través de `Depends(get_db)`. La ruta solo sabe que recibe un objeto que cumple con la interfaz de una sesión de base de datos. Esto desacopla el sistema y permite que, si queremos realizar pruebas unitarias, podamos inyectar un `mock_db` fácilmente sin tocar el código de la ruta.
+* **Fragmento de código real:**
 
 ```python
-@staticmethod
-def actualizar_solicitud(db: Session, solicitud_id: UUID, solicitud_update: SolicitudUpdate) -> Optional[Solicitud]:
-    """Actualizar completamente una solicitud"""
-    solicitud = db.query(Solicitud).filter(Solicitud.id == solicitud_id).first()
-    if not solicitud:
-        return None
-    
-    datos_actualizacion = solicitud_update.model_dump(exclude_unset=True)
-    for campo, valor in datos_actualizacion.items():
-        if valor is not None:
-            setattr(solicitud, campo, valor)
-    
-    db.commit()
-    db.refresh(solicitud)
-    return solicitud
-```
-
-Esto demuestra que el servicio no necesita ser modificado si se introduce un nuevo tipo de esquema de actualización, siempre que este respete el mismo contrato de comportamiento.
-
----
-
-### 4. I — Interface Segregation Principle (Principio de Segregación de Interfaces)
-
-**¿Qué significa?**
-
-Este principio indica que ningún cliente (en este caso, un endpoint o una función) debe verse obligado a depender de métodos o campos que no utiliza. Es preferible tener varias interfaces pequeñas y específicas, en lugar de una sola interfaz general que obligue a todos a lidiar con información que no necesitan.
-
-**¿Por qué es importante en este proyecto?**
-
-El enunciado de la práctica pide explícitamente un endpoint que actualice **exclusivamente el estado** de una solicitud, sin modificar el resto de sus atributos. Si se usara un único schema para todas las actualizaciones, ese endpoint estaría obligado a recibir y procesar campos que no le corresponden (como `titulo` o `costo_estimado`), lo cual viola este principio y aumenta el riesgo de actualizaciones no deseadas.
-
-**¿Cómo se aplicó?**
-
-En lugar de tener un único schema gigante que sirva para crear, actualizar completamente y actualizar el estado, separé los schemas según su propósito específico:
-
-- `SolicitudCreate` → solo para creación (todos los campos obligatorios).
-- `SolicitudUpdate` → solo para actualización completa (todos los campos opcionales, ya que puede que no todos cambien).
-- `SolicitudEstadoUpdate` → solo para actualizar el estado (un único campo obligatorio).
-
-```python
-class SolicitudEstadoUpdate(BaseModel):
-    """Schema para actualizar solo el estado"""
-    estado: str = Field(..., description="Nuevo estado de la solicitud")
-```
-
-De esta forma, el endpoint `PATCH /solicitudes/{id}/estado` solo depende de la interfaz mínima necesaria (`estado`), sin verse forzado a recibir o exponer campos como `titulo` o `costo_estimado` que no le corresponden:
-
-```python
-@router.patch("/{solicitud_id}/estado", response_model=SolicitudResponse)
-def actualizar_estado(solicitud_id: UUID, estado_update: SolicitudEstadoUpdate, db: Session = Depends(get_db)):
-    """Actualizar solo el estado de una solicitud"""
-    solicitud_actualizada = SolicitudService.actualizar_estado(db, solicitud_id, estado_update)
-    if not solicitud_actualizada:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Solicitud con ID {solicitud_id} no encontrada"
-        )
-    return solicitud_actualizada
-```
-
-Esta segregación evita que un cliente de la API tenga que enviar información innecesaria y reduce el riesgo de que, por error, se modifiquen campos que no debían tocarse.
-
----
-
-### 5. D — Dependency Inversion Principle (Principio de Inversión de Dependencias)
-
-**¿Qué significa?**
-
-Este principio establece que los módulos de alto nivel (la lógica de negocio) no deben depender directamente de módulos de bajo nivel (detalles de implementación, como la conexión a una base de datos específica). Ambos deben depender de abstracciones. En la práctica, esto se traduce en usar **inyección de dependencias** en lugar de crear instancias concretas directamente dentro del código.
-
-**¿Por qué es importante en este proyecto?**
-
-Si las rutas o los servicios crearan directamente sus propias conexiones a PostgreSQL, cambiar de base de datos, hacer pruebas unitarias con una base de datos de prueba, o cambiar la configuración de conexión sería muy complicado, ya que habría que modificar código en múltiples lugares del sistema.
-
-**¿Cómo se aplicó?**
-
-Las rutas no crean directamente la conexión a la base de datos ni gestionan manualmente las sesiones de SQLAlchemy. En su lugar, dependen de la función `get_db`, la cual es inyectada por FastAPI a través del mecanismo `Depends()`:
-
-```python
+# src/models/database.py
 def get_db():
-    """Dependencia para obtener la sesión de base de datos"""
     db = SessionLocal()
     try:
+        # Abstracción entregada por un yield (Generador)
         yield db
     finally:
         db.close()
+
+# src/routes/auth.py
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from src.models.database import get_db
+
+router = APIRouter()
+
+@router.post("/registro", response_model=UsuarioResponse)
+def registrar(usuario: UsuarioCreate, db: Session = Depends(get_db)):
+    # La ruta no sabe de credenciales, puertos o motores (PostgreSQL vs SQLite)
+    # Solo depende de la abstracción inyectada "Session"
+    return auth_service.crear_usuario(db=db, usuario=usuario)
+
 ```
-
-Las rutas simplemente declaran que necesitan una sesión de base de datos, sin saber cómo se crea ni cómo se cierra:
-
-```python
-@router.get("/", response_model=list[SolicitudResponse])
-def obtener_todas_solicitudes(db: Session = Depends(get_db)):
-    """Obtener todas las solicitudes operativas"""
-    solicitudes = SolicitudService.obtener_todas_solicitudes(db)
-    return solicitudes
-```
-
-Gracias a este mecanismo, la ruta depende de una **abstracción** (una sesión de base de datos inyectada) y no de una implementación concreta y fija. Esto permitiría, por ejemplo, reemplazar `get_db` por una versión que use una base de datos en memoria durante las pruebas automatizadas, sin modificar ni una sola línea de las rutas ni de los servicios.
-
----
