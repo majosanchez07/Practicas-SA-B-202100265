@@ -1,0 +1,172 @@
+version: '3.8'
+
+services:
+
+  # ─── BASES DE DATOS ───────────────────────────────────────────
+
+  postgres-auth:
+    image: postgres:15-alpine
+    container_name: postgres-auth
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: auth_db
+    volumes:
+      - pgdata-auth:/var/lib/postgresql/data
+    networks:
+      - biblioteca-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-books:
+    image: postgres:15-alpine
+    container_name: postgres-books
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: books_db
+    volumes:
+      - pgdata-books:/var/lib/postgresql/data
+    networks:
+      - biblioteca-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d books_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-loans:
+    image: postgres:15-alpine
+    container_name: postgres-loans
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: loans_db
+    volumes:
+      - pgdata-loans:/var/lib/postgresql/data
+    networks:
+      - biblioteca-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d loans_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-notifications:
+    image: postgres:15-alpine
+    container_name: postgres-notifications
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: notifications_db
+    volumes:
+      - pgdata-notifications:/var/lib/postgresql/data
+    networks:
+      - biblioteca-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d notifications_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── MICROSERVICIOS ───────────────────────────────────────────
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    env_file: ./auth-service/.env
+    environment:
+      DATABASE_URL: postgresql://admin:admin123@postgres-auth:5432/auth_db
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    networks:
+      - biblioteca-net
+    restart: on-failure
+
+  books-service:
+    build:
+      context: ./books-service
+      dockerfile: Dockerfile
+    container_name: books-service
+    env_file: ./books-service/.env
+    environment:
+      DATABASE_URL: postgresql://admin:admin123@postgres-books:5432/books_db
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres-books:
+        condition: service_healthy
+    networks:
+      - biblioteca-net
+    restart: on-failure
+
+  loans-service:
+    build:
+      context: ./loans-service
+      dockerfile: Dockerfile
+    container_name: loans-service
+    env_file: ./loans-service/.env
+    environment:
+      DATABASE_URL: postgresql://admin:admin123@postgres-loans:5432/loans_db
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres-loans:
+        condition: service_healthy
+    networks:
+      - biblioteca-net
+    restart: on-failure
+
+  notifications-service:
+    build:
+      context: ./notifications-service
+      dockerfile: Dockerfile
+    container_name: notifications-service
+    env_file: ./notifications-service/.env
+    environment:
+      DATABASE_URL: postgresql://admin:admin123@postgres-notifications:5432/notifications_db
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres-notifications:
+        condition: service_healthy
+    networks:
+      - biblioteca-net
+    restart: on-failure
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    env_file: ./api-gateway/.env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-service
+      - books-service
+      - loans-service
+      - notifications-service
+    networks:
+      - biblioteca-net
+    restart: on-failure
+
+# ─── VOLUMES Y NETWORKS ─────────────────────────────────────────
+
+volumes:
+  pgdata-auth:
+  pgdata-books:
+  pgdata-loans:
+  pgdata-notifications:
+
+networks:
+  biblioteca-net:
+    driver: bridge
