@@ -141,3 +141,13 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Practica 5 — credenciales locales del chart (nunca versionar)
+values.secret.yaml
+**/values.secret.yaml
+
+# Practica 5 — las dependencias resueltas del chart si se versionan.
+# La regla general "*.tgz" de arriba las excluiria, pero conviene incluirlas
+# para que el chart se pueda instalar sin depender de que el repositorio de
+# Bitnami siga disponible. Chart.lock fija sus versiones exactas.
+!P5/charts/sa-platform/charts/*.tgz

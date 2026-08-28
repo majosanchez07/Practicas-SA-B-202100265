@@ -1,0 +1,201 @@
+{{- /*
+================================================================================
+Deployments de los microservicios.
+
+Una sola plantilla genera los cinco Deployments recorriendo .Values.services con
+range. Agregar un microservicio al mapa de values basta para que se despliegue:
+no hay que escribir un manifiesto nuevo ni copiar este archivo.
+
+Cada Deployment define las tres probes que exige el enunciado, con valores
+justificados en la documentacion, y lleva la anotacion checksum/config que
+provoca el reinicio automatico de los pods cuando cambia el ConfigMap.
+================================================================================
+*/ -}}
+{{- $root := . -}}
+{{- range $svc, $cfg := .Values.services }}
+{{- if $cfg.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" $svc) }}
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+spec:
+  {{- /*
+  Cuando el HPA gobierna este servicio se omite replicas a proposito: si el
+  Deployment la fijara, cada helm upgrade devolveria el conteo al valor del
+  chart y deshara el escalado que el HPA hubiera decidido.
+  */}}
+  {{- if not $cfg.autoscaling.enabled }}
+  replicas: {{ $cfg.replicaCount | default 1 }}
+  {{- end }}
+
+  revisionHistoryLimit: 5
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      {{- /*
+      maxUnavailable: 0 es lo que sostiene la actualizacion sin caida de
+      servicio: Kubernetes no retira un pod viejo hasta que el nuevo pasa su
+      readiness probe, de modo que la capacidad nunca baja de la deseada.
+      */}}
+      maxUnavailable: {{ $root.Values.updateStrategy.maxUnavailable }}
+      maxSurge: {{ $root.Values.updateStrategy.maxSurge }}
+
+  selector:
+    matchLabels:
+      {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $svc) | nindent 6 }}
+
+  template:
+    metadata:
+      labels:
+        {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $svc) | nindent 8 }}
+        {{- if $cfg.usesBroker }}
+        {{- /* Etiqueta que las NetworkPolicies usan para autorizar el acceso al broker. */}}
+        sa-p5/broker-client: "true"
+        {{- end }}
+        {{- if $cfg.dbSchema }}
+        {{- /* Etiqueta que autoriza el acceso a la base de datos. */}}
+        sa-p5/db-client: "true"
+        {{- end }}
+      annotations:
+        {{- /*
+        Un cambio en el ConfigMap o en el Secret altera este hash, con lo que el
+        pod template deja de ser identico y Kubernetes reinicia los pods
+        afectados. Sin esto, un cambio de configuracion quedaria escrito en el
+        ConfigMap pero los pods seguirian ejecutandose con los valores viejos.
+        */}}
+        checksum/config: {{ include (print $root.Template.BasePath "/configmap.yaml") $root | sha256sum }}
+        checksum/secret: {{ include (print $root.Template.BasePath "/secret.yaml") $root | sha256sum }}
+    spec:
+      {{- /* ServiceAccount dedicado: el enunciado prohibe usar el "default". */}}
+      serviceAccountName: {{ include "sa-platform.serviceAccountName" (dict "root" $root "svc" $svc) }}
+      automountServiceAccountToken: false
+
+      securityContext:
+        {{- toYaml $root.Values.podSecurityContext | nindent 8 }}
+
+      {{- /*
+      Da tiempo a cerrar las conexiones en curso al recibir SIGTERM. Las
+      imagenes de Node usan dumb-init justamente para que la senal llegue al
+      proceso y este periodo se aproveche en lugar de agotarse.
+      */}}
+      terminationGracePeriodSeconds: 30
+
+      containers:
+        - name: {{ $svc }}
+          image: {{ include "sa-platform.image" (dict "root" $root "cfg" $cfg) | quote }}
+          imagePullPolicy: {{ $cfg.image.pullPolicy | default "IfNotPresent" }}
+
+          securityContext:
+            {{- toYaml $root.Values.securityContext | nindent 12 }}
+
+          ports:
+            - name: http
+              containerPort: {{ $cfg.port }}
+              protocol: TCP
+
+          {{- /*
+          Toda variable no sensible llega del ConfigMap y toda credencial del
+          Secret, ambos inyectados con envFrom tal como pide el enunciado.
+          */}}
+          envFrom:
+            - configMapRef:
+                name: {{ include "sa-platform.configMapName" $root }}
+            - secretRef:
+                name: {{ include "sa-platform.secretName" $root }}
+
+          env:
+            - name: PORT
+              value: {{ $cfg.port | quote }}
+            {{- if $cfg.dbSchema }}
+            - name: DB_SCHEMA
+              value: {{ $cfg.dbSchema | quote }}
+            {{- end }}
+            - name: SERVICE_NAME
+              value: {{ $svc | quote }}
+            {{- /* Util para diagnosticar que replica atendio una peticion. */}}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+
+          {{- /*
+          ---------------------------------------------------------------------
+          Las tres probes cumplen funciones distintas y por eso apuntan a
+          endpoints distintos:
+
+          startup   protege el arranque. Mientras no tenga exito, las otras dos
+                    quedan suspendidas, de modo que un arranque lento (crear el
+                    schema, migrar tablas, conectar con el broker) no provoca
+                    reinicios en cadena. Los servicios en Python reciben mas
+                    margen porque cargan mas dependencias al iniciar.
+
+          liveness  responde a "¿hay que reiniciar este pod?". Consulta
+                    /health/live, que no toca la base de datos a proposito: si
+                    consultara la BD, una caida temporal de Postgres reiniciaria
+                    todos los pods, lo cual no arregla la base y ademas agrega
+                    un CrashLoopBackOff al incidente.
+
+          readiness responde a "¿puede recibir trafico?". Consulta
+                    /health/ready, que si verifica la base de datos. Al fallar,
+                    el pod sale del balanceo pero sigue vivo y vuelve solo
+                    cuando la dependencia se restablece.
+          ---------------------------------------------------------------------
+          */}}
+          startupProbe:
+            httpGet:
+              path: {{ $cfg.probes.startup.path }}
+              port: http
+            initialDelaySeconds: {{ $cfg.probes.startup.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ $cfg.probes.startup.periodSeconds | default 5 }}
+            timeoutSeconds: {{ $cfg.probes.startup.timeoutSeconds | default 3 }}
+            failureThreshold: {{ $cfg.probes.startup.failureThreshold | default 12 }}
+
+          livenessProbe:
+            httpGet:
+              path: {{ $cfg.probes.liveness.path }}
+              port: http
+            periodSeconds: {{ $cfg.probes.liveness.periodSeconds | default 15 }}
+            timeoutSeconds: {{ $cfg.probes.liveness.timeoutSeconds | default 3 }}
+            failureThreshold: {{ $cfg.probes.liveness.failureThreshold | default 3 }}
+
+          readinessProbe:
+            httpGet:
+              path: {{ $cfg.probes.readiness.path }}
+              port: http
+            periodSeconds: {{ $cfg.probes.readiness.periodSeconds | default 10 }}
+            timeoutSeconds: {{ $cfg.probes.readiness.timeoutSeconds | default 3 }}
+            failureThreshold: {{ $cfg.probes.readiness.failureThreshold | default 3 }}
+
+          {{- /*
+          Retrasa el SIGTERM lo suficiente para que el endpoint salga de las
+          tablas de los kube-proxy antes de que el proceso empiece a cerrarse.
+          Sin esta pausa, algunas peticiones ya enrutadas al pod se perderian
+          durante el rolling update.
+          */}}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+
+          resources:
+            {{- toYaml $cfg.resources | nindent 12 }}
+
+          {{- /*
+          readOnlyRootFilesystem: true impide escribir en el sistema de
+          archivos de la imagen, asi que se monta un volumen efimero para los
+          temporales que las librerias puedan necesitar.
+          */}}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}
+{{- end }}
