@@ -1,0 +1,81 @@
+# syntax=docker/dockerfile:1
+# ==============================================================================
+# Dockerfile.prod — imagen de produccion de notifications-service
+#
+# Construccion en tres etapas. Cada FROM abre una etapa nueva y descarta el
+# sistema de archivos de la anterior: a la imagen final solo llega lo que se
+# copia explicitamente con COPY --from, de modo que ni el gestor de paquetes,
+# ni las dependencias de desarrollo, ni el codigo fuente intermedio quedan en
+# la capa publicada.
+#
+# Las tres etapas usan la MISMA version base. Construir con una version de Node
+# y ejecutar con otra distinta es una fuente conocida de fallos en los modulos
+# nativos, que se compilan contra la ABI de la version con la que se instalaron.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Etapa 1: deps — resuelve el arbol de dependencias completo
+# ------------------------------------------------------------------------------
+FROM node:20-alpine AS deps
+
+WORKDIR /usr/src/app
+
+# Se copian solo los manifiestos, no el codigo: mientras package.json no cambie,
+# Docker reutiliza la capa de npm install y la construccion es casi inmediata.
+COPY package.json ./
+COPY package-lock.json ./
+
+# npm ci instala exactamente lo que fija package-lock.json. Aqui se instalan
+# TODAS las dependencias, incluidas las de desarrollo, porque la etapa de build
+# las necesita.
+RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+
+# ------------------------------------------------------------------------------
+# Etapa 2: build — verifica y prepara la aplicacion
+# ------------------------------------------------------------------------------
+FROM node:20-alpine AS build
+
+WORKDIR /usr/src/app
+
+# Se reutiliza el arbol de dependencias ya resuelto en la etapa anterior.
+COPY --from=deps /usr/src/app/node_modules ./node_modules
+COPY . .
+
+# El servicio no tiene fase de transpilacion ni suite de pruebas declarada en
+# package.json, de modo que los scripts se ejecutan solo si existen: "npm run"
+# devuelve error cuando el script no esta definido, y eso abortaria la
+# construccion. La condicion mantiene el paso preparado para cuando se agreguen.
+RUN npm run build --if-present
+RUN npm run test --if-present
+
+# Se poda el arbol dejando unicamente las dependencias de produccion. Es la
+# diferencia principal de tamaño frente a copiar node_modules completo.
+RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
+
+# ------------------------------------------------------------------------------
+# Etapa 3: prod — imagen final
+# ------------------------------------------------------------------------------
+FROM node:20-alpine AS prod
+
+# dumb-init reencamina las señales del sistema. Sin el, node corre como PID 1 y
+# no recibe SIGTERM: Kubernetes tendria que matar el pod a la fuerza en cada
+# actualizacion, provocando la caida de servicio que se quiere evitar.
+RUN apk add --no-cache dumb-init
+
+ENV NODE_ENV=production \
+    PORT=8003
+
+WORKDIR /usr/src/app
+
+# El usuario "node" (uid 1000) ya viene en la imagen base. Es obligatorio para
+# poder ejecutar con runAsNonRoot: true y readOnlyRootFilesystem: true.
+COPY --from=build --chown=node:node /usr/src/app/node_modules ./node_modules
+COPY --from=build --chown=node:node /usr/src/app/package.json ./
+COPY --from=build --chown=node:node /usr/src/app/src ./src
+
+USER node
+
+EXPOSE 8003
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "src/index.js"]

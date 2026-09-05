@@ -54,30 +54,65 @@ config:
 # ------------------------------------------------------------------------------
 services:
   api-gateway:
+    replicaCount: 1
+    autoscaling:
+      minReplicas: 1
+      maxReplicas: 2
+    pdb:
+      # Con una sola replica, exigir minAvailable=1 impediria drenar un nodo.
+      enabled: false
     image:
       # registry se inyecta con --set al desplegar (URL del ECR de la cuenta).
       registry: ""
       repository: sa-p6/api-gateway
       pullPolicy: Always
   auth-service:
+    replicaCount: 1
+    autoscaling:
+      minReplicas: 1
+      maxReplicas: 2
+    pdb:
+      # Con una sola replica, exigir minAvailable=1 impediria drenar un nodo.
+      enabled: false
     image:
       # registry se inyecta con --set al desplegar (URL del ECR de la cuenta).
       registry: ""
       repository: sa-p6/auth-service
       pullPolicy: Always
   books-service:
+    replicaCount: 1
+    autoscaling:
+      minReplicas: 1
+      maxReplicas: 2
+    pdb:
+      # Con una sola replica, exigir minAvailable=1 impediria drenar un nodo.
+      enabled: false
     image:
       # registry se inyecta con --set al desplegar (URL del ECR de la cuenta).
       registry: ""
       repository: sa-p6/books-service
       pullPolicy: Always
   loans-service:
+    replicaCount: 1
+    autoscaling:
+      minReplicas: 1
+      maxReplicas: 2
+    pdb:
+      # Con una sola replica, exigir minAvailable=1 impediria drenar un nodo.
+      enabled: false
     image:
       # registry se inyecta con --set al desplegar (URL del ECR de la cuenta).
       registry: ""
       repository: sa-p6/loans-service
       pullPolicy: Always
   notifications-service:
+    replicaCount: 1
+    autoscaling:
+      minReplicas: 1
+      maxReplicas: 2
+    pdb:
+      # Con una sola replica, exigir minAvailable=1 impediria drenar un nodo.
+      enabled: false
     image:
       # registry se inyecta con --set al desplegar (URL del ECR de la cuenta).
       registry: ""
@@ -95,6 +130,23 @@ cronjobs:
       registry: ""
       repository: sa-p6/cronjob-summary
       pullPolicy: Always
+
+# ------------------------------------------------------------------------------
+# Replicas: ajuste obligado por el limite de pods del tipo de instancia.
+#
+# El CNI de AWS asigna a cada pod una IP real de la VPC, tomada de las interfaces
+# de red que soporta la instancia. Un t3.small admite 3 ENI x 4 IPs = 11 pods por
+# nodo, un techo DURO que no depende de la CPU ni de la memoria disponibles.
+#
+# Con 2 nodos el total es 22 pods, y de ahi hay que descontar los del sistema
+# (aws-node, kube-proxy, coredns y los controladores del driver EBS). El margen
+# restante no admite 2 replicas de cada uno de los 5 microservicios: los pods
+# sobrantes quedan en Pending con "Too many pods".
+#
+# Se baja a 1 replica y se ajusta el HPA en consecuencia. La alternativa era
+# usar instancias mayores (t3.medium admite 17 pods), pero encarece la practica
+# sin aportar nada a lo que se evalua.
+# ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
 # Exposicion publica — requisito 4 del enunciado
@@ -115,7 +167,16 @@ loadBalancer:
   service: api-gateway
   port: 80
   annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: nlb-ip
+    # "nlb" y no "nlb-ip": el modo nlb-ip (registro directo de las IP de los
+    # pods) lo implementa el AWS Load Balancer Controller, un componente que se
+    # instala aparte y que este cluster no tiene. Con nlb-ip el Service se queda
+    # en <pending> indefinidamente, porque el controlador integrado de
+    # Kubernetes no sabe atender esa anotacion.
+    #
+    # "nlb" a secas si lo entiende el cloud-controller-manager que EKS ya trae:
+    # crea un Network Load Balancer en modo instancia, que enruta al NodePort de
+    # cada nodo y de ahi al pod. Un salto de red mas, irrelevante a esta escala.
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
     service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
     service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
 

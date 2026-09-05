@@ -1,0 +1,87 @@
+# syntax=docker/dockerfile:1
+# ==============================================================================
+# Dockerfile.prod — imagen de produccion de auth-service
+#
+# Construccion en tres etapas. Cada FROM abre una etapa nueva y descarta el
+# sistema de archivos de la anterior: a la imagen final solo llega lo que se
+# copia explicitamente con COPY --from.
+#
+# Esto importa especialmente en Python: compilar psycopg y las librerias de
+# criptografia exige gcc y las cabeceras de desarrollo de libpq, unos 400 MB de
+# herramientas que no hacen ninguna falta para ejecutar y que, si quedaran en la
+# imagen final, ampliarian la superficie de ataque del contenedor.
+#
+# Las tres etapas comparten la misma version base, para que las ruedas
+# compiladas en la etapa deps sean compatibles con el interprete de la final.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Etapa 1: deps — compila las dependencias
+# ------------------------------------------------------------------------------
+FROM python:3.12-slim AS deps
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        gcc \
+        libpq-dev \
+        python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/app
+
+# Solo el manifiesto: mientras requirements.txt no cambie, Docker reutiliza esta
+# capa y no vuelve a compilar nada.
+COPY requirements.txt ./
+
+# --prefix concentra todo lo instalado en un unico arbol, que la etapa final
+# copia con una sola instruccion.
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# ------------------------------------------------------------------------------
+# Etapa 2: build — verifica el codigo
+# ------------------------------------------------------------------------------
+FROM python:3.12-slim AS build
+
+WORKDIR /usr/src/app
+
+COPY --from=deps /install /usr/local
+COPY . .
+
+# Compilacion a bytecode de todo el arbol. Cumple dos funciones: detecta errores
+# de sintaxis aqui, durante la construccion, en lugar de al arrancar el pod en
+# el cluster; y deja los .pyc listos para que el arranque sea mas rapido.
+RUN python -m compileall -q .
+
+# ------------------------------------------------------------------------------
+# Etapa 3: prod — imagen final
+# ------------------------------------------------------------------------------
+FROM python:3.12-slim AS prod
+
+# libpq5 es la libreria cliente de Postgres en tiempo de ejecucion. A diferencia
+# de libpq-dev, no arrastra cabeceras ni compilador.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpq5 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=8000
+
+# Usuario sin privilegios, requerido por runAsNonRoot: true.
+RUN groupadd --gid 1000 appuser \
+    && useradd --uid 1000 --gid 1000 --no-create-home --shell /usr/sbin/nologin appuser
+
+WORKDIR /usr/src/app
+
+COPY --from=deps /install /usr/local
+COPY --from=build --chown=appuser:appuser /usr/src/app/main.py ./
+COPY --from=build --chown=appuser:appuser /usr/src/app/src ./src
+
+USER appuser
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT} --log-level ${LOG_LEVEL:-info}"]

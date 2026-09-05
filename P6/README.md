@@ -127,6 +127,30 @@ la instalación falla con un mensaje claro si no se informan.
 valores aleatorios con `openssl rand`. Helm las materializa en un Secret dentro
 del clúster. El archivo `values.secret.yaml` está excluido en `.gitignore`.
 
+## Dirección pública verificada
+
+El sistema quedó accesible desde internet en:
+
+```
+http://a071e29918d89451b86249687b6aca56-bf52d25269a5103b.elb.us-east-2.amazonaws.com
+```
+
+Las cinco rutas probadas (`/health/live`, `/health/ready`, `/`, `/books`,
+`/auth/docs`) respondieron **HTTP 200** desde fuera del clúster. El detalle está
+en [`docs/evidencias/02-peticiones-desde-internet.md`](docs/evidencias/02-peticiones-desde-internet.md).
+
+> Esta dirección dejó de existir al eliminar los recursos, tal como pide el
+> enunciado. Las evidencias documentan su funcionamiento mientras estuvo activa.
+
+## Imágenes de contenedor
+
+Cada servicio se construye con su `Dockerfile.prod`, una construcción
+**multietapa en tres fases** (`deps` → `build` → `prod`): las herramientas de
+compilación y las dependencias de desarrollo quedan en las etapas intermedias y
+nunca llegan a la imagen publicada. Ver
+[`services/api-gateway/Dockerfile.prod`](services/api-gateway/Dockerfile.prod)
+como referencia.
+
 ## Costo
 
 ≈ **$0.17 por hora**, unos **$0.68** por las 4 horas que duró la práctica. Un mes

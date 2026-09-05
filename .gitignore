@@ -158,3 +158,4 @@ values.secret.yaml
 # Practica 6 — artefactos locales de ejecucion (nunca versionar)
 P6/.kube/
 P6/.direccion-publica
+P6/.image-tag

@@ -5,6 +5,8 @@
 # y si no existen se generan al vuelo. Helm las materializa en un Secret dentro
 # del clúster (requisito 6).
 set -euo pipefail
+# pipefail ya cubre el caso "helm | tee": sin el, un fallo de helm quedaria oculto
+# tras el exit 0 de tee.
 cd "$(dirname "$0")/.."
 source scripts/00-variables.sh
 

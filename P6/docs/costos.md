@@ -10,14 +10,21 @@
 El despliegue enciende cuatro recursos facturables. Ninguno está cubierto por la
 capa gratuita de AWS, con la excepción parcial de EBS.
 
-| Recurso | Cantidad | Precio unitario | Costo por hora |
+Las cantidades de esta tabla no son estimaciones: se consultaron con
+`aws ec2 describe-volumes` y `aws ec2 describe-instances` sobre el despliegue
+real (ver [evidencias](evidencias/01-evidencias-despliegue.md)).
+
+| Recurso | Cantidad real | Precio unitario | Costo por hora |
 |---|---|---|---|
-| Plano de control de EKS | 1 clúster | $0.10 / hora | $0.100 |
-| Nodos EC2 `t3.small` | 2 nodos | $0.0208 / hora | $0.042 |
-| Network Load Balancer | 1 | ~$0.0225 / hora | $0.023 |
-| Volúmenes EBS `gp3` | 16 GiB (2 × 8) | $0.08 / GiB-mes | $0.002 |
-| Discos raíz de los nodos | 40 GiB (2 × 20) | $0.08 / GiB-mes | $0.004 |
-| **Total aproximado** | | | **≈ $0.17 / hora** |
+| Plano de control de EKS | 1 clúster | $0.10 / hora | $0.1000 |
+| Nodos EC2 `t3.small` | 2 nodos | $0.0208 / hora | $0.0416 |
+| Network Load Balancer | 1 (`nlb`) | ~$0.0225 / hora | $0.0225 |
+| Volúmenes EBS `gp3` de datos | 16 GiB (2 × 8) | $0.08 / GiB-mes | $0.0018 |
+| Discos raíz de los nodos | 40 GiB (2 × 20) | $0.08 / GiB-mes | $0.0044 |
+| **Total** | | | **≈ $0.17 / hora** |
+
+El plano de control es el **59 %** del costo horario y es el único renglón que
+no se puede reducir dimensionando: cuesta lo mismo con carga o sin ella.
 
 Al total hay que sumarle dos renglones menores que dependen del uso y no del
 tiempo encendido: las **LCU del balanceador** (unidades de capacidad, que para el
@@ -27,19 +34,23 @@ plataforma ocupan bastante menos de 1 GiB en total.
 
 ## 2. Costo real de esta práctica
 
-Con el clúster encendido durante las **≈ 4 horas** que tomó desplegar, verificar
-y documentar:
+El clúster `sa-p6-202100265` se creó el **4 de septiembre de 2026 a las 20:47**
+(hora de Guatemala) y se eliminó el mismo día tras recolectar las evidencias,
+con un tiempo total encendido de aproximadamente **2 horas**:
 
 ```
-0.17 USD/hora × 4 horas ≈ 0.68 USD
+0.17 USD/hora × 2 horas ≈ 0.34 USD
 ```
 
-Menos de un dólar. La cifra importante no es ésa, sino la que se habría generado
+A eso se suma el almacenamiento de las 7 imágenes en ECR, muy por debajo de
+1 GiB y por tanto inferior a $0.01 en el periodo. **El costo total de la
+práctica fue inferior a $0.40**, cubierto por los créditos de estudiante. La cifra importante no es ésa, sino la que se habría generado
 al olvidar el clúster encendido:
 
 | Tiempo encendido | Costo acumulado |
 |---|---|
-| 4 horas (esta práctica) | ~$0.68 |
+| 2 horas (esta práctica) | ~$0.34 |
+| 4 horas | ~$0.68 |
 | 1 día | ~$4.08 |
 | 1 semana | ~$28.56 |
 | **1 mes** | **~$122.40** |
