@@ -139,8 +139,11 @@ Las cinco rutas probadas (`/health/live`, `/health/ready`, `/`, `/books`,
 `/auth/docs`) respondieron **HTTP 200** desde fuera del clúster. El detalle está
 en [`docs/evidencias/01-evidencias.md`](docs/evidencias/01-evidencias.md).
 
-> Esta dirección dejó de existir al eliminar los recursos, tal como pide el
-> enunciado. Las evidencias documentan su funcionamiento mientras estuvo activa.
+> El clúster se mantiene activo durante el periodo de calificación. Una vez
+> calificada la práctica se eliminan todos los recursos con
+> [`scripts/99-eliminar.sh`](scripts/99-eliminar.sh), tal como exige el
+> enunciado, y esta dirección deja de existir. Las evidencias de la sección
+> correspondiente documentan su funcionamiento.
 
 ## Imágenes de contenedor
 
