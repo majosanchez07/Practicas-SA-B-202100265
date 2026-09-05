@@ -318,11 +318,7 @@ minikube image load sa-p5/api-gateway:v2 --profile=sa-p5
 ### Upgrade
 
 ```bash
-helm upgrade sa-platform . \
-  --namespace sa-p5 \
-  -f values-dev.yaml -f values.secret.yaml \
-  --set services.api-gateway.image.tag=v2 \
-  --timeout 8m --wait
+
 ```
 
 ### Rollback a la revisión anterior

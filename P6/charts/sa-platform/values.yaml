@@ -297,6 +297,17 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-body-size: "8m"
 
 # ------------------------------------------------------------------------------
+# LoadBalancer — punto de entrada publico
+# Desactivado por defecto: en un cluster local no hay proveedor que lo resuelva
+# y el Service quedaria en <pending> indefinidamente. Se activa en values-eks.yaml.
+# ------------------------------------------------------------------------------
+loadBalancer:
+  enabled: false
+  service: api-gateway
+  port: 80
+  annotations: {}
+
+# ------------------------------------------------------------------------------
 # NetworkPolicies — aislamiento de trafico lateral
 # ------------------------------------------------------------------------------
 networkPolicies:
