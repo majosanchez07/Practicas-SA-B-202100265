@@ -12,7 +12,7 @@ capa gratuita de AWS, con la excepción parcial de EBS.
 
 Las cantidades de esta tabla no son estimaciones: se consultaron con
 `aws ec2 describe-volumes` y `aws ec2 describe-instances` sobre el despliegue
-real (ver [evidencias](evidencias/01-evidencias-despliegue.md)).
+real (ver [evidencias](evidencias/01-evidencias.md)).
 
 | Recurso | Cantidad real | Precio unitario | Costo por hora |
 |---|---|---|---|

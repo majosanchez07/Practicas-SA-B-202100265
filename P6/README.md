@@ -137,7 +137,7 @@ http://a071e29918d89451b86249687b6aca56-bf52d25269a5103b.elb.us-east-2.amazonaws
 
 Las cinco rutas probadas (`/health/live`, `/health/ready`, `/`, `/books`,
 `/auth/docs`) respondieron **HTTP 200** desde fuera del clúster. El detalle está
-en [`docs/evidencias/02-peticiones-desde-internet.md`](docs/evidencias/02-peticiones-desde-internet.md).
+en [`docs/evidencias/01-evidencias.md`](docs/evidencias/01-evidencias.md).
 
 > Esta dirección dejó de existir al eliminar los recursos, tal como pide el
 > enunciado. Las evidencias documentan su funcionamiento mientras estuvo activa.
