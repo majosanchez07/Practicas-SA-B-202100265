@@ -1,0 +1,507 @@
+# ==============================================================================
+# Practica 7 — Pipeline de integracion y despliegue continuo
+# Maria Jose Tebalan Sanchez — 202100265
+#
+# El flujo completo, de un commit a un despliegue verificado:
+#
+#   version -> build -> test -> docker (build + push a GHCR) -> despliegue k8s
+#
+# Cada etapa es un job independiente encadenado con "needs", de modo que el
+# grafo de Actions dibuja el pipeline tal como aparece en el diagrama de la
+# documentacion y un fallo temprano detiene todo lo que venga despues: si las
+# pruebas fallan, no se publica ninguna imagen.
+#
+# Los siete componentes (5 microservicios + 2 cronjobs) se construyen en
+# paralelo mediante estrategias matriciales, en lugar de siete jobs repetidos.
+# ==============================================================================
+
+name: P7 - CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*.*.*']          # un tag de version dispara el flujo de release
+    paths:                    # y solo cuando cambia algo de esta practica
+      - 'P7/**'
+      - '.github/workflows/p7-cicd.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'P7/**'
+      - '.github/workflows/p7-cicd.yml'
+  workflow_dispatch:          # ejecucion manual, para demostrar el pipeline
+
+# Permisos minimos necesarios: leer el codigo y escribir en el registro de
+# paquetes de GitHub. No se concede nada mas.
+permissions:
+  contents: read
+  packages: write
+
+# Un push nuevo sobre la misma rama cancela la ejecucion anterior: evita gastar
+# minutos de runner en un commit que ya quedo obsoleto.
+concurrency:
+  group: p7-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  # El nombre del repositorio se pasa a minusculas mas abajo: GHCR rechaza
+  # mayusculas en el nombre de la imagen y el usuario/repo puede tenerlas.
+  IMAGE_PREFIX: ${{ github.repository }}
+  CARNE: '202100265'
+
+jobs:
+
+  # ---------------------------------------------------------------------------
+  # ETAPA 0 — Version
+  #
+  # Calcula una sola vez la version que usara todo el pipeline, para que las
+  # siete imagenes de una misma ejecucion compartan exactamente el mismo tag y
+  # el despliegue no mezcle versiones distintas de los microservicios.
+  # ---------------------------------------------------------------------------
+  version:
+    name: 0 - Preparacion - version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.calcular.outputs.version }}
+      sha_corto: ${{ steps.calcular.outputs.sha_corto }}
+      prefijo: ${{ steps.calcular.outputs.prefijo }}
+      es_release: ${{ steps.calcular.outputs.es_release }}
+    steps:
+      - name: Obtener el codigo
+        uses: actions/checkout@v4
+
+      - name: Calcular la version y el prefijo de las imagenes
+        id: calcular
+        run: |
+          set -euo pipefail
+          SHA_CORTO="$(git rev-parse --short HEAD)"
+
+          # Tres esquemas de versionado segun el disparador:
+          #   tag v1.2.3   -> 1.2.3        (release)
+          #   rama main    -> main-<sha>   (integracion continua)
+          #   otra rama/PR -> <rama>-<sha>
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            ES_RELEASE=true
+          else
+            RAMA="${GITHUB_REF_NAME//\//-}"
+            VERSION="${RAMA}-${SHA_CORTO}"
+            ES_RELEASE=false
+          fi
+
+          # GHCR exige el nombre de la imagen en minusculas.
+          PREFIJO="$(echo "${REGISTRY}/${IMAGE_PREFIX}" | tr '[:upper:]' '[:lower:]')"
+
+          {
+            echo "version=${VERSION}"
+            echo "sha_corto=${SHA_CORTO}"
+            echo "prefijo=${PREFIJO}"
+            echo "es_release=${ES_RELEASE}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Resumen de la version
+        run: |
+          {
+            echo "### Version de esta ejecucion"
+            echo ""
+            echo "| Dato | Valor |"
+            echo "|---|---|"
+            echo "| Version | \`${{ steps.calcular.outputs.version }}\` |"
+            echo "| Commit | \`${{ steps.calcular.outputs.sha_corto }}\` |"
+            echo "| Disparador | \`${{ github.event_name }}\` |"
+            echo "| Referencia | \`${{ github.ref_name }}\` |"
+            echo "| Release | \`${{ steps.calcular.outputs.es_release }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # ETAPA 1 — Build (Node)
+  #
+  # Instala dependencias con npm ci —reproducible, a partir del lockfile— y
+  # verifica que el codigo al menos se parsea. Un error de sintaxis se detecta
+  # aqui, en segundos, y no cinco minutos despues al construir la imagen.
+  # ---------------------------------------------------------------------------
+  build-node:
+    name: 1 - Build
+    needs: version
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false        # ver los tres resultados, no solo el primero que falle
+      matrix:
+        servicio: [api-gateway, loans-service, notifications-service]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: P7/services/${{ matrix.servicio }}/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: P7/services/${{ matrix.servicio }}
+        run: npm ci --no-audit --no-fund
+
+      - name: Verificar que todos los modulos se parsean
+        working-directory: P7/services/${{ matrix.servicio }}
+        run: |
+          # node --check es el equivalente a compilar en un lenguaje interpretado.
+          find src -name '*.js' -print0 | xargs -0 -n1 node --check
+          echo "Todos los modulos de ${{ matrix.servicio }} son sintacticamente validos"
+
+      - name: Auditoria de vulnerabilidades
+        working-directory: P7/services/${{ matrix.servicio }}
+        # No bloquea el pipeline: informa. Una vulnerabilidad en una dependencia
+        # transitiva no deberia impedir la entrega, pero si quedar registrada.
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+  build-python:
+    name: 1 - Build - python
+    needs: version
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - servicio: auth-service
+            ruta: P7/services/auth-service
+          - servicio: books-service
+            ruta: P7/services/books-service
+          - servicio: cronjob-insert
+            ruta: P7/cronjobs/cronjob-insert
+          - servicio: cronjob-summary
+            ruta: P7/cronjobs/cronjob-summary
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ${{ matrix.ruta }}/requirements.txt
+
+      - name: Instalar dependencias
+        working-directory: ${{ matrix.ruta }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compilar todos los modulos
+        working-directory: ${{ matrix.ruta }}
+        run: |
+          # compileall falla ante cualquier error de sintaxis: es la etapa de
+          # build real de un proyecto Python.
+          python -m compileall -q .
+          echo "Todos los modulos de ${{ matrix.servicio }} compilan"
+
+  # ---------------------------------------------------------------------------
+  # ETAPA 2 — Test
+  #
+  # Las pruebas unitarias de cada servicio. Ningun caso necesita Postgres ni
+  # RabbitMQ: las dependencias externas se sustituyen por dobles y la base de
+  # books-service es un SQLite en memoria, de modo que la etapa corre en
+  # segundos y no depende de que un contenedor auxiliar arranque a tiempo.
+  # ---------------------------------------------------------------------------
+  test-node:
+    name: 2 - Test
+    needs: build-node
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        servicio: [api-gateway, loans-service, notifications-service]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: P7/services/${{ matrix.servicio }}/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: P7/services/${{ matrix.servicio }}
+        run: npm ci --no-audit --no-fund
+
+      - name: Ejecutar las pruebas unitarias
+        working-directory: P7/services/${{ matrix.servicio }}
+        run: npm test
+
+  test-python:
+    name: 2 - Test - python
+    needs: build-python
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        servicio: [auth-service, books-service]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: P7/services/${{ matrix.servicio }}/requirements.txt
+
+      - name: Instalar dependencias de ejecucion y de prueba
+        working-directory: P7/services/${{ matrix.servicio }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Ejecutar las pruebas unitarias con cobertura
+        working-directory: P7/services/${{ matrix.servicio }}
+        run: pytest --cov=src --cov-report=term-missing --cov-report=xml
+
+      - name: Guardar el reporte de cobertura
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cobertura-${{ matrix.servicio }}
+          path: P7/services/${{ matrix.servicio }}/coverage.xml
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # ETAPA 3 — Dockerizacion y publicacion en GHCR
+  #
+  # Solo se ejecuta si build y test terminaron bien: esa dependencia es lo que
+  # impide publicar una imagen con pruebas en rojo.
+  #
+  # En un pull request se construye pero NO se publica: interesa verificar que
+  # el Dockerfile sigue siendo valido sin ensuciar el registro con imagenes de
+  # ramas que quiza nunca se fusionen.
+  # ---------------------------------------------------------------------------
+  docker:
+    name: 3 - Docker
+    needs: [version, test-node, test-python]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - componente: api-gateway
+            contexto: P7/services/api-gateway
+          - componente: auth-service
+            contexto: P7/services/auth-service
+          - componente: books-service
+            contexto: P7/services/books-service
+          - componente: loans-service
+            contexto: P7/services/loans-service
+          - componente: notifications-service
+            contexto: P7/services/notifications-service
+          - componente: cronjob-insert
+            contexto: P7/cronjobs/cronjob-insert
+          - componente: cronjob-summary
+            contexto: P7/cronjobs/cronjob-summary
+    steps:
+      - uses: actions/checkout@v4
+
+      # Buildx habilita la cache de capas entre ejecuciones y la construccion
+      # multiplataforma.
+      - name: Preparar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Autenticarse contra GHCR
+        # En un pull request no hay push, de modo que tampoco hace falta login.
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          # GITHUB_TOKEN es un token efimero que Actions genera por ejecucion.
+          # Por eso este pipeline no necesita ningun secreto configurado a mano.
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calcular etiquetas y metadatos de la imagen
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ needs.version.outputs.prefijo }}/p7-${{ matrix.componente }}
+          tags: |
+            type=raw,value=${{ needs.version.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.title=p7-${{ matrix.componente }}
+            org.opencontainers.image.description=Practica 7 - ${{ matrix.componente }}
+            org.opencontainers.image.vendor=USAC - Software Avanzado
+            org.opencontainers.image.authors=Maria Jose Tebalan Sanchez (${{ env.CARNE }})
+
+      - name: Construir y publicar la imagen
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.contexto }}
+          file: ${{ matrix.contexto }}/Dockerfile.prod
+          target: prod
+          platforms: linux/amd64
+          # En un PR se construye para validar el Dockerfile, pero no se publica.
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Cache de capas en el almacenamiento de Actions: las dependencias no
+          # se vuelven a instalar cuando solo cambio el codigo.
+          cache-from: type=gha,scope=p7-${{ matrix.componente }}
+          cache-to: type=gha,mode=max,scope=p7-${{ matrix.componente }}
+          provenance: false
+
+      - name: Anotar las imagenes publicadas
+        if: github.event_name != 'pull_request'
+        run: |
+          {
+            echo "### ${{ matrix.componente }}"
+            echo ""
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # ETAPA 4 — Despliegue automatico en Kubernetes
+  #
+  # El despliegue ocurre sobre un clus'ter kind creado dentro del propio runner.
+  # Es una decision deliberada: el objetivo de la practica es demostrar que el
+  # pipeline aplica los cambios en Kubernetes sin intervencion manual, y un
+  # clus'ter efimero permite verificarlo de extremo a extremo —incluida la
+  # descarga real de las imagenes desde GHCR— en cada ejecucion, sin depender de
+  # una cuenta de nube encendida ni de que una maquina local este disponible al
+  # momento de calificar.
+  #
+  # Lo que se prueba aqui es exactamente lo que se probaria contra un clus'ter
+  # permanente: el mismo chart, los mismos manifiestos y las mismas imagenes.
+  # ---------------------------------------------------------------------------
+  desplegar:
+    name: 4 - Despliegue K8s (kind efimero)
+    needs: [version, docker]
+    # Solo desde main o desde un tag: un PR no despliega nada.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Crear el clus'ter kind
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: p7-${{ env.CARNE }}
+          node_image: kindest/node:v1.31.0
+          wait: 120s
+
+      - name: Instalar Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.2
+
+      - name: Verificar que el clus'ter responde
+        run: |
+          kubectl cluster-info
+          kubectl get nodes -o wide
+
+      # Las imagenes son privadas por defecto al publicarse desde un repositorio
+      # privado, de modo que el clus'ter necesita credenciales para descargarlas.
+      # El mismo GITHUB_TOKEN de la etapa anterior sirve como contrasena.
+      - name: Crear el namespace y el secreto de acceso a GHCR
+        run: |
+          kubectl create namespace sa-p7
+          kubectl create secret docker-registry ghcr-credenciales \
+            --namespace sa-p7 \
+            --docker-server=${{ env.REGISTRY }} \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }}
+
+      # Las credenciales se generan al vuelo con openssl: el clus'ter es
+      # efimero y se destruye al terminar el job, de modo que no hay nada que
+      # rotar ni ningun secreto que guardar en la configuracion del repositorio.
+      # El chart las exige con "required", asi que deben informarse todas.
+      - name: Desplegar la plataforma con Helm
+        run: |
+          set -euo pipefail
+          helm upgrade --install sa-platform ./P7/charts/sa-platform \
+            --namespace sa-p7 \
+            --values ./P7/charts/sa-platform/values-ci.yaml \
+            --set imageRegistry="${{ needs.version.outputs.prefijo }}" \
+            --set global.imageTag="${{ needs.version.outputs.version }}" \
+            --set postgresql.auth.username=biblioteca \
+            --set postgresql.auth.database=biblioteca \
+            --set postgresql.auth.password="$(openssl rand -hex 16)" \
+            --set postgresql.auth.postgresPassword="$(openssl rand -hex 16)" \
+            --set rabbitmq.auth.username=biblioteca \
+            --set rabbitmq.auth.password="$(openssl rand -hex 16)" \
+            --set rabbitmq.auth.erlangCookie="$(openssl rand -hex 32)" \
+            --set secrets.jwtSecretKey="$(openssl rand -hex 32)" \
+            --set secrets.aesSecretKey="$(openssl rand -hex 16)" \
+            --wait --timeout 12m
+
+      - name: Verificar el estado del despliegue
+        run: bash ./P7/scripts/verificar-despliegue.sh sa-p7
+
+      - name: Recolectar evidencia del despliegue
+        if: always()
+        run: bash ./P7/scripts/recolectar-evidencia.sh sa-p7
+
+      - name: Diagnostico en caso de fallo
+        if: failure()
+        run: |
+          echo "::group::Eventos del namespace"
+          kubectl get events -n sa-p7 --sort-by=.lastTimestamp | tail -50
+          echo "::endgroup::"
+          echo "::group::Descripcion de los pods"
+          kubectl describe pods -n sa-p7
+          echo "::endgroup::"
+          echo "::group::Logs de los contenedores"
+          for pod in $(kubectl get pods -n sa-p7 -o name); do
+            echo "--- $pod ---"
+            kubectl logs "$pod" -n sa-p7 --all-containers --tail=50 || true
+          done
+          echo "::endgroup::"
+
+      - name: Publicar la evidencia como artefacto
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evidencia-despliegue-${{ needs.version.outputs.sha_corto }}
+          path: evidencia-despliegue/
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Resumen final: una sola linea que dice si el pipeline entrego o no.
+  # ---------------------------------------------------------------------------
+  resultado:
+    name: 5 - Resultado del pipeline
+    needs: [version, build-node, build-python, test-node, test-python, docker, desplegar]
+    # always() hace que este job corra incluso si algo fallo antes; sin el, el
+    # resumen solo aparecería en las ejecuciones exitosas, que es justo cuando
+    # menos falta hace.
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Redactar el resumen
+        run: |
+          {
+            echo "## Pipeline P7 — ${{ needs.version.outputs.version }}"
+            echo ""
+            echo "| Etapa | Resultado |"
+            echo "|---|---|"
+            echo "| 1 - Build (Node) | ${{ needs.build-node.result }} |"
+            echo "| 1 - Build (Python) | ${{ needs.build-python.result }} |"
+            echo "| 2 - Test (Node) | ${{ needs.test-node.result }} |"
+            echo "| 2 - Test (Python) | ${{ needs.test-python.result }} |"
+            echo "| 3 - Docker + push a GHCR | ${{ needs.docker.result }} |"
+            echo "| 4 - Despliegue en Kubernetes | ${{ needs.desplegar.result }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fallar si alguna etapa obligatoria fallo
+        if: |
+          needs.build-node.result == 'failure' ||
+          needs.build-python.result == 'failure' ||
+          needs.test-node.result == 'failure' ||
+          needs.test-python.result == 'failure' ||
+          needs.docker.result == 'failure' ||
+          needs.desplegar.result == 'failure'
+        run: |
+          echo "El pipeline no completo todas sus etapas."
+          exit 1

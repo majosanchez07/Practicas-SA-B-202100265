@@ -1,0 +1,382 @@
+{{- /*
+================================================================================
+NetworkPolicies — aislamiento del trafico lateral.
+
+Por que hace falta declararlas: en Kubernetes el trafico entre pods es
+permitido por defecto. Mientras ningun NetworkPolicy seleccione a un pod, ese
+pod acepta conexiones de cualquier origen del cluster. Las politicas no son
+reglas de bloqueo sino de permiso: en cuanto una politica selecciona un pod,
+ese pod pasa a rechazar todo lo que ninguna politica autorice expresamente.
+
+De ahi el orden de este archivo:
+  1. Una politica default-deny que selecciona a todos los pods del namespace y
+     no autoriza nada. A partir de ella, el namespace queda cerrado.
+  2. Politicas concretas que abren unicamente los caminos que la arquitectura
+     necesita.
+
+Caminos autorizados:
+  Ingress Controller  -> API Gateway            (unica entrada al cluster)
+  API Gateway         -> microservicios         (el gateway enruta)
+  microservicios      -> PostgreSQL             (solo los que tienen dbSchema)
+  microservicios      -> RabbitMQ               (solo los marcados usesBroker)
+  cronjobs            -> PostgreSQL y RabbitMQ
+  todos               -> DNS                    (sin esto nada resuelve nombres)
+
+Lo que queda bloqueado y se demuestra con evidencia:
+  - un microservicio no puede alcanzar a otro microservicio directamente
+  - un pod sin autorizacion no puede alcanzar la base de datos ni el broker
+================================================================================
+*/ -}}
+{{- if .Values.networkPolicies.enabled }}
+{{- $root := . -}}
+{{- $ns := .Values.namespace.name -}}
+
+{{- /* ============================================================
+     1. Denegar por defecto
+     ============================================================ */}}
+{{- if .Values.networkPolicies.defaultDeny }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.fullname" . }}-default-deny
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  # Un podSelector vacio selecciona a TODOS los pods del namespace.
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  # Sin reglas ingress ni egress: nada entra y nada sale mientras otra politica
+  # no lo autorice expresamente.
+{{- end }}
+
+{{- /* ============================================================
+     2. DNS para todos
+     Se declara aparte porque afecta a cada pod del namespace. Sin esta regla
+     el default-deny impediria resolver nombres y ningun servicio encontraria
+     ni a la base de datos ni al broker, con fallos que aparentan ser de
+     conectividad y no de politica.
+     ============================================================ */}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.fullname" . }}-allow-dns
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+{{- /* ============================================================
+     3. Ingress Controller -> API Gateway
+     Es el unico trafico que entra al namespace desde fuera.
+     ============================================================ */}}
+{{- range $svc, $cfg := .Values.services }}
+{{- if and $cfg.enabled $cfg.isGateway }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" $svc) }}-allow-ingress
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $svc) | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Pods del Ingress Controller, identificados por el namespace donde
+        # corren y por sus propias etiquetas.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: {{ $cfg.port }}
+    - from:
+        # Las probes las ejecuta el kubelet desde la IP del nodo, que no
+        # corresponde a ningun pod; se autoriza el rango privado del cluster
+        # para que liveness y readiness puedan alcanzar al gateway.
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: {{ $cfg.port }}
+{{- end }}
+{{- end }}
+
+{{- /* ============================================================
+     4. API Gateway -> microservicios
+     Salida autorizada del gateway y entrada autorizada de cada microservicio.
+     El gateway es el unico origen admitido: un microservicio no puede llamar
+     directamente a otro.
+     ============================================================ */}}
+{{- $gateway := "" -}}
+{{- range $svc, $cfg := .Values.services }}
+{{- if and $cfg.enabled $cfg.isGateway }}{{ $gateway = $svc }}{{ end }}
+{{- end }}
+
+{{- if $gateway }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" $gateway) }}-allow-egress
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $gateway) | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $gateway) | nindent 6 }}
+  policyTypes:
+    - Egress
+  egress:
+    {{- range $svc, $cfg := $root.Values.services }}
+    {{- if and $cfg.enabled (not $cfg.isGateway) }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $svc) | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ $cfg.port }}
+    {{- end }}
+    {{- end }}
+
+{{- range $svc, $cfg := .Values.services }}
+{{- if and $cfg.enabled (not $cfg.isGateway) }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" $svc) }}-allow-from-gateway
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $svc) | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Unicamente el API Gateway. Aqui esta el bloqueo del trafico lateral:
+        # ningun otro microservicio aparece como origen autorizado.
+        - podSelector:
+            matchLabels:
+              {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $gateway) | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ $cfg.port }}
+    - from:
+        # Probes del kubelet, igual que en el caso del gateway.
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: {{ $cfg.port }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /* ============================================================
+     5. Acceso a PostgreSQL
+     Solo los pods etiquetados como clientes de base de datos. Esa etiqueta la
+     coloca el Deployment cuando el servicio declara dbSchema en values, de
+     modo que la autorizacion se deriva de la configuracion y no de una lista
+     escrita a mano que podria quedar desactualizada.
+     ============================================================ */}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.fullname" . }}-allow-db-clients-egress
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      sa-p5/db-client: "true"
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgresql
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.fullname" . }}-postgresql-allow-clients
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgresql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              sa-p5/db-client: "true"
+      ports:
+        - protocol: TCP
+          port: 5432
+
+{{- /* ============================================================
+     6. Acceso a RabbitMQ
+     Mismo criterio: solo los pods marcados como clientes del broker, etiqueta
+     que se deriva de usesBroker en values.
+     ============================================================ */}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.fullname" . }}-allow-broker-clients-egress
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      sa-p5/broker-client: "true"
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: rabbitmq
+      ports:
+        - protocol: TCP
+          port: 5672
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.fullname" . }}-rabbitmq-allow-clients
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: rabbitmq
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              sa-p5/broker-client: "true"
+      ports:
+        - protocol: TCP
+          port: 5672
+
+{{- /* ============================================================
+     7. Trafico interno de las dependencias
+     PostgreSQL y RabbitMQ necesitan salida para sus propias tareas: resolucion
+     de nombres, sondas internas y, en el caso de RabbitMQ, comunicacion entre
+     nodos si mas adelante se activara el modo cluster.
+     ============================================================ */}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.fullname" . }}-dependencies-internal
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values:
+          - postgresql
+          - rabbitmq
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        # Entre replicas de la propia dependencia.
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - postgresql
+                  - rabbitmq
+    - from:
+        # Probes del kubelet.
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 192.168.0.0/16
+  egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - postgresql
+                  - rabbitmq
+{{- end }}

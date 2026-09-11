@@ -1,0 +1,39 @@
+﻿apiVersion: v2
+name: sa-platform
+description: Plataforma de microservicios de biblioteca para la Practica 6 de Software Avanzado (despliegue en EKS)
+type: application
+
+# version    -> version del chart; se incrementa ante cualquier cambio del empaquetado.
+# appVersion -> version de la aplicacion desplegada.
+# El enunciado pide demostrar al menos dos versiones publicadas: la 0.1.0 se
+# instala primero y la 0.2.0 se aplica con helm upgrade, para despues volver a
+# la revision anterior con helm rollback.
+version: 0.2.0
+appVersion: "1.1.0"
+
+# El linter de Helm recomienda declarar un icono para el chart.
+icon: https://helm.sh/img/helm.svg
+
+keywords:
+  - microservicios
+  - helm
+  - kubernetes
+  - biblioteca
+
+maintainers:
+  - name: Maria Jose Tebalan Sanchez
+    email: 202100265@ingenieria.usac.edu.gt
+
+dependencies:
+  # Base de datos: el chart de Bitnami la despliega como StatefulSet con su
+  # PersistentVolumeClaim y su headless service, tal como exige el enunciado.
+  - name: postgresql
+    version: 15.5.38
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+
+  # Broker de mensajeria para el flujo asincrono.
+  - name: rabbitmq
+    version: 16.0.14
+    repository: https://charts.bitnami.com/bitnami
+    condition: rabbitmq.enabled

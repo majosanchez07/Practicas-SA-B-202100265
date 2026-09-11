@@ -1,0 +1,48 @@
+===== ConfigMap =====
+NAME                 DATA   AGE
+kube-root-ca.crt     1      4m24s
+sa-platform-config   17     115s
+
+===== Secrets (solo nombres; el contenido NO se registra) =====
+NAME                                TYPE                 DATA   AGE
+sa-platform-postgresql              Opaque               2      115s
+sa-platform-rabbitmq                Opaque               2      115s
+sa-platform-rabbitmq-config         Opaque               1      115s
+sa-platform-secret                  Opaque               9      115s
+sh.helm.release.v1.sa-platform.v1   helm.sh/release.v1   1      115s
+
+===== HPA =====
+No resources found in sa-p7 namespace.
+
+===== NetworkPolicies =====
+NAME                                                   POD-SELECTOR                                                                                                                  AGE
+sa-platform-allow-broker-clients-egress                sa-p5/broker-client=true                                                                                                      115s
+sa-platform-allow-db-clients-egress                    sa-p5/db-client=true                                                                                                          115s
+sa-platform-allow-dns                                  <none>                                                                                                                        115s
+sa-platform-api-gateway-allow-egress                   app.kubernetes.io/component=api-gateway,app.kubernetes.io/instance=sa-platform,app.kubernetes.io/name=sa-platform             115s
+sa-platform-api-gateway-allow-ingress                  app.kubernetes.io/component=api-gateway,app.kubernetes.io/instance=sa-platform,app.kubernetes.io/name=sa-platform             115s
+sa-platform-auth-service-allow-from-gateway            app.kubernetes.io/component=auth-service,app.kubernetes.io/instance=sa-platform,app.kubernetes.io/name=sa-platform            115s
+sa-platform-books-service-allow-from-gateway           app.kubernetes.io/component=books-service,app.kubernetes.io/instance=sa-platform,app.kubernetes.io/name=sa-platform           115s
+sa-platform-default-deny                               <none>                                                                                                                        115s
+sa-platform-dependencies-internal                      app.kubernetes.io/name in (postgresql,rabbitmq)                                                                               115s
+sa-platform-loans-service-allow-from-gateway           app.kubernetes.io/component=loans-service,app.kubernetes.io/instance=sa-platform,app.kubernetes.io/name=sa-platform           115s
+sa-platform-notifications-service-allow-from-gateway   app.kubernetes.io/component=notifications-service,app.kubernetes.io/instance=sa-platform,app.kubernetes.io/name=sa-platform   115s
+sa-platform-postgresql-allow-clients                   app.kubernetes.io/name=postgresql                                                                                             115s
+sa-platform-rabbitmq-allow-clients                     app.kubernetes.io/name=rabbitmq                                                                                               115s
+
+===== ResourceQuota =====
+Name:                   sa-platform-quota
+Namespace:              sa-p7
+Resource                Used    Hard
+--------                ----    ----
+limits.cpu              2700m   6
+limits.memory           2752Mi  6Gi
+persistentvolumeclaims  2       5
+pods                    7       25
+requests.cpu            150m    2
+requests.memory         816Mi   3Gi
+
+===== PersistentVolumeClaims =====
+NAME                            STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+data-sa-platform-postgresql-0   Bound    pvc-7669dfbb-ada5-40bb-978a-e1d3a2bf7836   1Gi        RWO            standard       <unset>                 115s
+data-sa-platform-rabbitmq-0     Bound    pvc-11ece35b-c775-4309-9ef0-93feb064f9e9   1Gi        RWO            standard       <unset>                 115s

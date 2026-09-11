@@ -1,0 +1,174 @@
+# ==============================================================================
+# values-ci.yaml — Ambiente del pipeline (clus'ter kind dentro del runner)
+#
+# Este archivo es el que usa la etapa 4 del pipeline de la Practica 7. Parte de
+# values.yaml y lo ajusta a las restricciones de un runner de GitHub Actions:
+# 2 vCPU y 7 GB de RAM compartidos entre el clus'ter, Postgres y RabbitMQ.
+#
+# Las tres diferencias frente a values-dev.yaml:
+#
+#   1. Una sola replica por servicio y sin autoescalado. Con dos replicas de
+#      cinco servicios mas las dependencias, el runner no alcanza a programar
+#      todos los pods y el despliegue expira esperando a que esten listos.
+#
+#   2. Peticiones de recursos minimas. En Kubernetes lo que decide si un pod
+#      cabe en un nodo son los "requests", no el consumo real: pedir de mas deja
+#      pods en Pending indefinidamente aunque haya memoria libre.
+#
+#   3. pullPolicy Always y un imagePullSecret. Se quiere que el clus'ter
+#      descargue de verdad las imagenes recien publicadas en GHCR, porque eso es
+#      justamente lo que demuestra que el pipeline entrego lo que construyo.
+#
+# El registro y el tag no se fijan aqui: los informa el workflow con --set, a
+# partir de la version calculada en la etapa 0. Se usa "imageRegistry" y NO
+# "global.imageRegistry": el valor global tambien lo heredan los subcharts de
+# Bitnami y postgresql y rabbitmq terminarian buscandose en GHCR.
+# ==============================================================================
+
+# El chart usa .Values.namespace.name en todas sus plantillas en lugar de
+# .Release.Namespace, de modo que este valor debe coincidir con el namespace que
+# recibe helm --namespace. Si no coinciden, los objetos se generan apuntando al
+# namespace del values (sa-p5) y la instalacion falla con "namespaces not found".
+namespace:
+  create: false
+  name: sa-p7
+
+config:
+  logLevel: debug
+  environment: ci
+  corsOrigins: "*"
+
+# Nombre del Secret de tipo docker-registry que crea el workflow antes de
+# instalar el chart.
+imagePullSecrets:
+  - name: ghcr-credenciales
+
+services:
+  api-gateway:
+    replicaCount: 1
+    image:
+      repository: p7-api-gateway
+      # Always: el tag de una ejecucion es unico, pero conviene ser explicito
+      # en que la imagen se trae del registro y no de una cache del nodo.
+      pullPolicy: Always
+    resources:
+      requests: { cpu: 10m, memory: 48Mi }
+      limits: { cpu: 300m, memory: 192Mi }
+    autoscaling:
+      enabled: false
+    pdb:
+      # Con una sola replica, un PDB de minAvailable 1 impide cualquier
+      # desalojo y puede bloquear operaciones del clus'ter.
+      enabled: false
+
+  auth-service:
+    replicaCount: 1
+    image:
+      repository: p7-auth-service
+      pullPolicy: Always
+    resources:
+      requests: { cpu: 10m, memory: 96Mi }
+      limits: { cpu: 400m, memory: 384Mi }
+    autoscaling:
+      enabled: false
+    pdb:
+      enabled: false
+
+  books-service:
+    replicaCount: 1
+    image:
+      repository: p7-books-service
+      pullPolicy: Always
+    resources:
+      requests: { cpu: 10m, memory: 96Mi }
+      limits: { cpu: 400m, memory: 384Mi }
+    autoscaling:
+      enabled: false
+    pdb:
+      enabled: false
+
+  loans-service:
+    replicaCount: 1
+    image:
+      repository: p7-loans-service
+      pullPolicy: Always
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { cpu: 300m, memory: 256Mi }
+    autoscaling:
+      enabled: false
+    pdb:
+      enabled: false
+
+  notifications-service:
+    replicaCount: 1
+    image:
+      repository: p7-notifications-service
+      pullPolicy: Always
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { cpu: 300m, memory: 256Mi }
+    autoscaling:
+      enabled: false
+    pdb:
+      enabled: false
+
+cronjobs:
+  insert:
+    image:
+      repository: p7-cronjob-insert
+      pullPolicy: Always
+  summary:
+    image:
+      repository: p7-cronjob-summary
+      pullPolicy: Always
+
+ingress:
+  # kind no trae controlador de Ingress y el pipeline no instala uno: la
+  # verificacion se hace por port-forward contra el Service del gateway, que es
+  # suficiente para comprobar que la plataforma responde.
+  enabled: false
+  host: sa-p7.local
+
+# Cuotas holgadas respecto a lo que realmente pide el release: su proposito
+# aqui es demostrar que el objeto se crea, no restringir el ambiente.
+resourceQuota:
+  enabled: true
+  hard:
+    requests.cpu: "2"
+    requests.memory: 3Gi
+    limits.cpu: "6"
+    limits.memory: 6Gi
+    pods: "25"
+    persistentvolumeclaims: "5"
+
+# ------------------------------------------------------------------------------
+# Dependencias: la configuracion mas austera que sigue siendo funcional.
+#
+# El "image.registry" explicito es indispensable. El workflow informa
+# global.imageRegistry apuntando a GHCR para que los siete componentes propios
+# se descarguen de ahi, pero los subcharts de Bitnami heredan ese valor global y
+# terminarian buscando postgresql y rabbitmq dentro de mi propio repositorio de
+# GHCR, donde no existen: los pods quedarian en ImagePullBackOff y el despliegue
+# expiraria sin una causa evidente. Fijar el registro aqui los devuelve a Docker
+# Hub, que es de donde realmente vienen.
+# ------------------------------------------------------------------------------
+postgresql:
+  image:
+    registry: docker.io
+  primary:
+    persistence:
+      size: 1Gi
+    resources:
+      requests: { cpu: 50m, memory: 192Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+
+rabbitmq:
+  image:
+    registry: docker.io
+  replicaCount: 1
+  persistence:
+    size: 1Gi
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { cpu: 500m, memory: 768Mi }

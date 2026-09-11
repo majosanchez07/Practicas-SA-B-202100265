@@ -1,0 +1,129 @@
+{{- /*
+================================================================================
+RBAC de minimo privilegio.
+
+Cada microservicio y cada cronjob recibe su propio ServiceAccount, con Role y
+RoleBinding acotados a lo estrictamente necesario. El enunciado prohibe usar el
+ServiceAccount "default".
+
+Sobre el alcance de los permisos: estas aplicaciones no consultan la API de
+Kubernetes; obtienen su configuracion por variables de entorno. En rigor no
+necesitarian ningun permiso, y esa es precisamente la lectura correcta de
+"minimo privilegio". Se concede unicamente lectura del ConfigMap y del Secret
+que cada carga de trabajo consume, y solo de esos objetos por nombre mediante
+resourceNames, de modo que ni siquiera puede enumerar los demas secretos del
+namespace. Ese permiso habilita diagnosticar la configuracion efectiva desde
+dentro del pod sin abrir nada mas.
+
+Los tokens no se montan automaticamente en los pods
+(automountServiceAccountToken: false); la identidad existe para poder auditar y
+acotar, no para que las aplicaciones llamen a la API.
+================================================================================
+*/ -}}
+{{- $root := . -}}
+
+{{- /* ---------- Microservicios ---------- */}}
+{{- range $svc, $cfg := .Values.services }}
+{{- if $cfg.enabled }}
+{{- $nombre := include "sa-platform.serviceName" (dict "root" $root "svc" $svc) }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "sa-platform.serviceAccountName" (dict "root" $root "svc" $svc) }}
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $nombre }}-role
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+rules:
+  # Solo lectura, y solo de los dos objetos que este servicio consume.
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames:
+      - {{ include "sa-platform.configMapName" $root }}
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - {{ include "sa-platform.secretName" $root }}
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $nombre }}-rolebinding
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $nombre }}-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "sa-platform.serviceAccountName" (dict "root" $root "svc" $svc) }}
+    namespace: {{ $root.Values.namespace.name }}
+{{- end }}
+{{- end }}
+
+{{- /* ---------- Cronjobs ---------- */}}
+{{- range $job, $cfg := .Values.cronjobs }}
+{{- if $cfg.enabled }}
+{{- $nombre := printf "%s-cronjob-%s" (include "sa-platform.fullname" $root) $job }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $nombre }}-sa
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ printf "cronjob-%s" $job }}
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $nombre }}-role
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ printf "cronjob-%s" $job }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames:
+      - {{ include "sa-platform.configMapName" $root }}
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - {{ include "sa-platform.secretName" $root }}
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $nombre }}-rolebinding
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ printf "cronjob-%s" $job }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $nombre }}-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ $nombre }}-sa
+    namespace: {{ $root.Values.namespace.name }}
+{{- end }}
+{{- end }}

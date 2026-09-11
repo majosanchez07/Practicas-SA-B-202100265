@@ -1,0 +1,31 @@
+{{- /*
+================================================================================
+Services de los microservicios.
+
+Todos son de tipo ClusterIP, sin excepcion: el enunciado prohibe exponer los
+microservicios, la base de datos y el broker con NodePort o LoadBalancer. La
+unica puerta de entrada al cluster es el Ingress que apunta al API Gateway.
+================================================================================
+*/ -}}
+{{- $root := . -}}
+{{- range $svc, $cfg := .Values.services }}
+{{- if $cfg.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" $svc) }}
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ $cfg.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+{{- end }}
+{{- end }}

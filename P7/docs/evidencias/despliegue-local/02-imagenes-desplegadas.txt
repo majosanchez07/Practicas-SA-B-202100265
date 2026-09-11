@@ -1,0 +1,8 @@
+TIPO         NOMBRE                              IMAGEN
+Deployment   sa-platform-api-gateway             p7-api-gateway:local
+Deployment   sa-platform-auth-service            p7-auth-service:local
+Deployment   sa-platform-books-service           p7-books-service:local
+Deployment   sa-platform-loans-service           p7-loans-service:local
+Deployment   sa-platform-notifications-service   p7-notifications-service:local
+CronJob   sa-platform-cronjob-insert    p7-cronjob-insert:local
+CronJob   sa-platform-cronjob-summary   p7-cronjob-summary:local

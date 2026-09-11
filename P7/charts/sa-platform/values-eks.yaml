@@ -1,0 +1,241 @@
+# ==============================================================================
+# values-eks.yaml — Adaptacion de la plataforma al clúster administrado de AWS
+#
+# Este archivo sobrescribe values.yaml unicamente en aquello que cambia al pasar
+# de un clúster local (kind) a uno administrado (EKS). Todo lo demas -- replicas,
+# probes, securityContext, NetworkPolicies, cuotas -- se hereda sin tocar,
+# porque no depende del proveedor.
+#
+# Los tres puntos donde un clúster de nube difiere de uno local:
+#
+#   1. Registro de imagenes. En kind las imagenes se cargan con "kind load" desde
+#      el Docker local. Un clúster administrado corre en maquinas de AWS que no
+#      tienen acceso a ese Docker, de modo que las imagenes deben publicarse en
+#      un registro accesible por red: Amazon ECR.
+#
+#   2. Almacenamiento. kind trae una StorageClass "standard" con provisionador
+#      rancher.io/local-path que escribe en el disco del nodo. En EKS el
+#      almacenamiento lo provee EBS a traves del driver CSI, con la
+#      StorageClass "gp3": discos de red independientes del nodo, de modo que
+#      el dato sobrevive a que el pod se reprograme en otra maquina.
+#
+#   3. Exposicion. En kind se usaba un Ingress nginx con un host ficticio
+#      (sa-p5.local) resuelto en /etc/hosts. Aqui el punto de entrada es un
+#      Service de tipo LoadBalancer: EKS lo traduce en un Network Load Balancer
+#      real de AWS con un nombre DNS publico alcanzable desde internet.
+#
+# Las credenciales NO viven aqui. Se inyectan al instalar con --set o con un
+# values.secret.yaml no versionado (excluido en .gitignore).
+# ==============================================================================
+
+global:
+  # DELIBERADAMENTE VACIO. El registro ECR NO se declara aqui.
+  #
+  # Los subcharts de Bitnami heredan .Values.global del padre y su helper resuelve
+  # el registro como  default .imageRoot.registry (.global.imageRegistry) , y en
+  # Helm  default  devuelve el segundo argumento cuando no esta vacio: es decir
+  # global.imageRegistry GANA sobre el image.registry del subchart. Si se pusiera
+  # el ECR aqui, postgresql y rabbitmq se buscarian dentro del ECR de la cuenta,
+  # donde no existen, y ambos pods quedarian en ImagePullBackOff.
+  #
+  # Por eso el registro se declara por servicio, en services.<n>.image.registry,
+  # que solo afecta a las imagenes propias. El script 02-publicar-imagenes.sh lo
+  # pasa con --set services.<n>.image.registry=<ecr>.
+  imageRegistry: ""
+  storageClass: gp3
+
+config:
+  environment: production
+  logLevel: info
+
+# ------------------------------------------------------------------------------
+# Imagenes: en la nube nunca se usa IfNotPresent con un tag movil.
+# Cada servicio se etiqueta con el SHA del commit y se descarga del registro.
+# ------------------------------------------------------------------------------
+services:
+  api-gateway:
+    replicaCount: 1
+    autoscaling:
+      minReplicas: 1
+      maxReplicas: 2
+    pdb:
+      # Con una sola replica, exigir minAvailable=1 impediria drenar un nodo.
+      enabled: false
+    image:
+      # registry se inyecta con --set al desplegar (URL del ECR de la cuenta).
+      registry: ""
+      repository: sa-p6/api-gateway
+      pullPolicy: Always
+  auth-service:
+    replicaCount: 1
+    autoscaling:
+      minReplicas: 1
+      maxReplicas: 2
+    pdb:
+      # Con una sola replica, exigir minAvailable=1 impediria drenar un nodo.
+      enabled: false
+    image:
+      # registry se inyecta con --set al desplegar (URL del ECR de la cuenta).
+      registry: ""
+      repository: sa-p6/auth-service
+      pullPolicy: Always
+  books-service:
+    replicaCount: 1
+    autoscaling:
+      minReplicas: 1
+      maxReplicas: 2
+    pdb:
+      # Con una sola replica, exigir minAvailable=1 impediria drenar un nodo.
+      enabled: false
+    image:
+      # registry se inyecta con --set al desplegar (URL del ECR de la cuenta).
+      registry: ""
+      repository: sa-p6/books-service
+      pullPolicy: Always
+  loans-service:
+    replicaCount: 1
+    autoscaling:
+      minReplicas: 1
+      maxReplicas: 2
+    pdb:
+      # Con una sola replica, exigir minAvailable=1 impediria drenar un nodo.
+      enabled: false
+    image:
+      # registry se inyecta con --set al desplegar (URL del ECR de la cuenta).
+      registry: ""
+      repository: sa-p6/loans-service
+      pullPolicy: Always
+  notifications-service:
+    replicaCount: 1
+    autoscaling:
+      minReplicas: 1
+      maxReplicas: 2
+    pdb:
+      # Con una sola replica, exigir minAvailable=1 impediria drenar un nodo.
+      enabled: false
+    image:
+      # registry se inyecta con --set al desplegar (URL del ECR de la cuenta).
+      registry: ""
+      repository: sa-p6/notifications-service
+      pullPolicy: Always
+
+cronjobs:
+  insert:
+    image:
+      registry: ""
+      repository: sa-p6/cronjob-insert
+      pullPolicy: Always
+  summary:
+    image:
+      registry: ""
+      repository: sa-p6/cronjob-summary
+      pullPolicy: Always
+
+# ------------------------------------------------------------------------------
+# Replicas: ajuste obligado por el limite de pods del tipo de instancia.
+#
+# El CNI de AWS asigna a cada pod una IP real de la VPC, tomada de las interfaces
+# de red que soporta la instancia. Un t3.small admite 3 ENI x 4 IPs = 11 pods por
+# nodo, un techo DURO que no depende de la CPU ni de la memoria disponibles.
+#
+# Con 2 nodos el total es 22 pods, y de ahi hay que descontar los del sistema
+# (aws-node, kube-proxy, coredns y los controladores del driver EBS). El margen
+# restante no admite 2 replicas de cada uno de los 5 microservicios: los pods
+# sobrantes quedan en Pending con "Too many pods".
+#
+# Se baja a 1 replica y se ajusta el HPA en consecuencia. La alternativa era
+# usar instancias mayores (t3.medium admite 17 pods), pero encarece la practica
+# sin aportar nada a lo que se evalua.
+# ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+# Exposicion publica — requisito 4 del enunciado
+#
+# Se sustituye el Ingress local por un Service de tipo LoadBalancer sobre el
+# api-gateway. Al crearlo, el cloud-controller-manager de EKS solicita a AWS un
+# Network Load Balancer y escribe su nombre DNS en status.loadBalancer.ingress,
+# que es la direccion publica que se documenta como evidencia.
+#
+# Se elige NLB (nlb-ip) y no el Classic Load Balancer por defecto porque enruta
+# directamente a la IP del pod, sin el salto extra por el NodePort.
+# ------------------------------------------------------------------------------
+ingress:
+  enabled: false
+
+loadBalancer:
+  enabled: true
+  service: api-gateway
+  port: 80
+  annotations:
+    # "nlb" y no "nlb-ip": el modo nlb-ip (registro directo de las IP de los
+    # pods) lo implementa el AWS Load Balancer Controller, un componente que se
+    # instala aparte y que este cluster no tiene. Con nlb-ip el Service se queda
+    # en <pending> indefinidamente, porque el controlador integrado de
+    # Kubernetes no sabe atender esa anotacion.
+    #
+    # "nlb" a secas si lo entiende el cloud-controller-manager que EKS ya trae:
+    # crea un Network Load Balancer en modo instancia, que enruta al NodePort de
+    # cada nodo y de ahi al pod. Un salto de red mas, irrelevante a esta escala.
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+
+# ------------------------------------------------------------------------------
+# Cuotas: los nodos t3.small tienen 2 vCPU y 2 GiB cada uno. Con 2 nodos el
+# techo real es menor que en kind, asi que se ajusta la cuota para que el
+# ResourceQuota no rechace pods legitimos.
+# ------------------------------------------------------------------------------
+resourceQuota:
+  enabled: true
+  hard:
+    requests.cpu: "3"
+    requests.memory: 3Gi
+    limits.cpu: "6"
+    limits.memory: 6Gi
+    pods: "40"
+    persistentvolumeclaims: "5"
+
+# ------------------------------------------------------------------------------
+# Almacenamiento persistente con la StorageClass del proveedor — requisito 5
+# ------------------------------------------------------------------------------
+postgresql:
+  enabled: true
+  global:
+    storageClass: gp3
+    # Se anula el imageRegistry heredado del padre: en los charts de Bitnami
+    # global.imageRegistry tiene prioridad sobre image.registry, de modo que sin
+    # esta linea la imagen se buscaria en el ECR de la cuenta (ImagePullBackOff).
+    imageRegistry: ""
+  # global.imageRegistry apunta a ECR para las imagenes propias, pero los
+  # subcharts de Bitnami lo heredan y buscarian postgresql dentro del ECR de la
+  # cuenta, donde no existe -> ImagePullBackOff. Se fija aqui el registro real
+  # de estas dos imagenes, que se siguen descargando de Docker Hub.
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/postgresql
+    tag: 16.4.0-debian-12-r14
+  primary:
+    persistence:
+      enabled: true
+      storageClass: gp3
+      size: 8Gi
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { cpu: 500m, memory: 768Mi }
+
+rabbitmq:
+  enabled: true
+  global:
+    storageClass: gp3
+  # Mismo motivo que en postgresql: no heredar el registro ECR.
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/rabbitmq
+    tag: 4.1.3-debian-12-r1
+  persistence:
+    enabled: true
+    storageClass: gp3
+    size: 8Gi
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 500m, memory: 768Mi }

@@ -1,0 +1,139 @@
+{{- /*
+================================================================================
+CronJobs encadenados.
+
+Cronjob 1 (insert)  — cada 2 minutos inserta en la base de datos un registro con
+                      la fecha y hora de ejecucion en GMT-6 y el carne.
+Cronjob 2 (summary) — cada 10 minutos consulta esos registros, calcula cuantas
+                      ejecuciones hubo por hora y publica el resumen en el
+                      broker, donde notifications-service lo consume y almacena.
+
+Ambos se generan recorriendo .Values.cronjobs con range, igual que los
+microservicios: el schedule, los limites de historial y los recursos son
+parametros, no valores escritos en la plantilla.
+
+Sobre los campos que el enunciado exige:
+  concurrencyPolicy: Forbid  evita que una ejecucion arranque si la anterior
+                             sigue en curso. Importa sobre todo en el cronjob 1:
+                             sin esta politica, una ejecucion lenta y la
+                             siguiente podrian insertar registros solapados.
+  backoffLimit               cuantos reintentos admite un Job antes de darse por
+                             fallido. Los scripts terminan con codigo distinto
+                             de cero al fallar, de modo que Kubernetes los
+                             contabiliza correctamente.
+  successfulJobsHistoryLimit
+  failedJobsHistoryLimit     cuantos Jobs terminados se conservan. Sin limite,
+                             un cronjob que corre cada 2 minutos acumularia
+                             cientos de objetos Job en el namespace y agotaria
+                             la cuota de pods.
+================================================================================
+*/ -}}
+{{- $root := . -}}
+{{- range $job, $cfg := .Values.cronjobs }}
+{{- if $cfg.enabled }}
+{{- $nombre := printf "%s-cronjob-%s" (include "sa-platform.fullname" $root) $job }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $nombre }}
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ printf "cronjob-%s" $job }}
+spec:
+  schedule: {{ required (printf "cronjobs.%s.schedule es obligatorio" $job) $cfg.schedule | quote }}
+
+  # Zona horaria del planificador. Se fija a proposito para que la expresion
+  # cron no dependa de la zona con que se haya configurado el nodo.
+  timeZone: {{ $cfg.timezone | default "America/Guatemala" | quote }}
+
+  concurrencyPolicy: {{ $cfg.concurrencyPolicy | default "Forbid" }}
+  successfulJobsHistoryLimit: {{ $cfg.successfulJobsHistoryLimit | default 3 }}
+  failedJobsHistoryLimit: {{ $cfg.failedJobsHistoryLimit | default 3 }}
+
+  # Si el planificador se retrasa mas de este margen, la ejecucion se omite en
+  # lugar de dispararse a destiempo.
+  startingDeadlineSeconds: {{ $cfg.startingDeadlineSeconds | default 60 }}
+
+  jobTemplate:
+    spec:
+      backoffLimit: {{ $cfg.backoffLimit | default 2 }}
+
+      # Corta una ejecucion colgada para que no bloquee a la siguiente,
+      # especialmente con concurrencyPolicy: Forbid.
+      activeDeadlineSeconds: {{ $cfg.activeDeadlineSeconds | default 300 }}
+
+      # Los Jobs terminados se eliminan solos pasado este tiempo, ademas de los
+      # limites de historial.
+      ttlSecondsAfterFinished: {{ $cfg.ttlSecondsAfterFinished | default 600 }}
+
+      template:
+        metadata:
+          labels:
+            {{- include "sa-platform.selectorLabels" $root | nindent 12 }}
+            app.kubernetes.io/component: {{ printf "cronjob-%s" $job }}
+            {{- /*
+            Etiquetas que las NetworkPolicies usan para autorizar el acceso.
+            El cronjob 1 solo necesita la base de datos; el 2 ademas el broker.
+            */}}
+            sa-p5/db-client: "true"
+            {{- if $cfg.usesBroker | default (eq $job "summary") }}
+            sa-p5/broker-client: "true"
+            {{- end }}
+          annotations:
+            # Igual que en los Deployments: un cambio de configuracion se
+            # refleja en la siguiente ejecucion.
+            checksum/config: {{ include (print $root.Template.BasePath "/configmap.yaml") $root | sha256sum }}
+        spec:
+          # Un cronjob termina: no debe reiniciarse indefinidamente. Con OnFailure
+          # el reintento lo gobierna backoffLimit.
+          restartPolicy: OnFailure
+
+          # ServiceAccount dedicado, como exige el enunciado.
+          serviceAccountName: {{ $nombre }}-sa
+          automountServiceAccountToken: false
+
+          {{- /* Mismas credenciales de registro que los Deployments. */}}
+          {{- with $root.Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          securityContext:
+            {{- toYaml $root.Values.podSecurityContext | nindent 12 }}
+
+          containers:
+            - name: {{ printf "cronjob-%s" $job }}
+              image: {{ include "sa-platform.image" (dict "root" $root "cfg" $cfg) | quote }}
+              imagePullPolicy: {{ $cfg.image.pullPolicy | default "IfNotPresent" }}
+
+              securityContext:
+                {{- toYaml $root.Values.securityContext | nindent 16 }}
+
+              envFrom:
+                - configMapRef:
+                    name: {{ include "sa-platform.configMapName" $root }}
+                - secretRef:
+                    name: {{ include "sa-platform.secretName" $root }}
+
+              env:
+                - name: DB_SCHEMA
+                  value: {{ $cfg.dbSchema | default "cronjobs" | quote }}
+                {{- if $cfg.timezoneReporte }}
+                - name: TZ_REPORTE
+                  value: {{ $cfg.timezoneReporte | quote }}
+                {{- end }}
+
+              resources:
+                {{- toYaml $cfg.resources | nindent 16 }}
+
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+
+          volumes:
+            - name: tmp
+              emptyDir: {}
+{{- end }}
+{{- end }}

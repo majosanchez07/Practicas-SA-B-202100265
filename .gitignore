@@ -159,3 +159,17 @@ values.secret.yaml
 P6/.kube/
 P6/.direccion-publica
 P6/.image-tag
+
+# ------------------------------------------------------------------------------
+# Python — artefactos de ejecucion y de pruebas
+# Los entornos virtuales los crea scripts/pruebas-locales.sh, uno por servicio,
+# y no deben versionarse: se reconstruyen desde requirements.txt.
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/

@@ -1,0 +1,725 @@
+Name:             sa-platform-api-gateway-5dfdd8fb9-wvsx5
+Namespace:        sa-p7
+Priority:         0
+Service Account:  sa-platform-api-gateway-sa
+Node:             p7-202100265-control-plane/172.22.0.3
+Start Time:       Thu, 10 Sep 2026 23:14:52 -0600
+Labels:           app.kubernetes.io/component=api-gateway
+                  app.kubernetes.io/instance=sa-platform
+                  app.kubernetes.io/name=sa-platform
+                  pod-template-hash=5dfdd8fb9
+Annotations:      checksum/config: 9270ce08c84fb4a3dd2f406e14567079cc0646a7c06857c6f38f37589bc803c3
+                  checksum/secret: e0b7826b3d3568a49872ecb30c3732e8433a03c53f70a395b41f9e9fa7de3afb
+Status:           Running
+SeccompProfile:   RuntimeDefault
+IP:               10.244.0.17
+IPs:
+  IP:           10.244.0.17
+Controlled By:  ReplicaSet/sa-platform-api-gateway-5dfdd8fb9
+Containers:
+  api-gateway:
+    Container ID:   containerd://ceadab57c1f36abad35485b715b27758b2c29f4b633489efa0d290c575106a75
+    Image:          p7-api-gateway:local
+    Image ID:       docker.io/library/import-2026-09-11@sha256:6f6a5d55e9eabf9d1cca55abd40c31f6cc37fb53658d0e246bd5d33c98ccea03
+    Port:           8080/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Thu, 10 Sep 2026 23:14:52 -0600
+    Ready:          True
+    Restart Count:  0
+    Limits:
+      cpu:     300m
+      memory:  192Mi
+    Requests:
+      cpu:      10m
+      memory:   48Mi
+    Liveness:   http-get http://:http/health/live delay=0s timeout=3s period=15s #success=1 #failure=3
+    Readiness:  http-get http://:http/health/ready delay=0s timeout=3s period=10s #success=1 #failure=3
+    Startup:    http-get http://:http/health/live delay=5s timeout=3s period=5s #success=1 #failure=12
+    Environment Variables from:
+      sa-platform-config  ConfigMap  Optional: false
+      sa-platform-secret  Secret     Optional: false
+    Environment:
+      PORT:          8080
+      SERVICE_NAME:  api-gateway
+      POD_NAME:      sa-platform-api-gateway-5dfdd8fb9-wvsx5 (v1:metadata.name)
+    Mounts:
+      /tmp from tmp (rw)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  tmp:
+    Type:        EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:      
+    SizeLimit:   <unset>
+QoS Class:       Burstable
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                 node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                 From               Message
+  ----     ------     ----                ----               -------
+  Normal   Scheduled  115s                default-scheduler  Successfully assigned sa-p7/sa-platform-api-gateway-5dfdd8fb9-wvsx5 to p7-202100265-control-plane
+  Normal   Pulled     115s                kubelet            Container image "p7-api-gateway:local" already present on machine
+  Normal   Created    115s                kubelet            Created container api-gateway
+  Normal   Started    115s                kubelet            Started container api-gateway
+  Warning  Unhealthy  85s (x5 over 110s)  kubelet            Readiness probe failed: HTTP probe failed with statuscode: 503
+
+
+Name:             sa-platform-auth-service-5cf475865b-nktr5
+Namespace:        sa-p7
+Priority:         0
+Service Account:  sa-platform-auth-service-sa
+Node:             p7-202100265-control-plane/172.22.0.3
+Start Time:       Thu, 10 Sep 2026 23:14:52 -0600
+Labels:           app.kubernetes.io/component=auth-service
+                  app.kubernetes.io/instance=sa-platform
+                  app.kubernetes.io/name=sa-platform
+                  pod-template-hash=5cf475865b
+                  sa-p5/db-client=true
+Annotations:      checksum/config: 9270ce08c84fb4a3dd2f406e14567079cc0646a7c06857c6f38f37589bc803c3
+                  checksum/secret: e0b7826b3d3568a49872ecb30c3732e8433a03c53f70a395b41f9e9fa7de3afb
+Status:           Running
+SeccompProfile:   RuntimeDefault
+IP:               10.244.0.21
+IPs:
+  IP:           10.244.0.21
+Controlled By:  ReplicaSet/sa-platform-auth-service-5cf475865b
+Containers:
+  auth-service:
+    Container ID:   containerd://194c2294debf8bdb2e4b4e65609830add7a3305bd3a928ce3d7ec1119470d38a
+    Image:          p7-auth-service:local
+    Image ID:       docker.io/library/import-2026-09-11@sha256:ff88a07f0ec47d70fef7bc08e9e5479e05aa415a25cd6f5a81131580018acef1
+    Port:           8000/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Thu, 10 Sep 2026 23:15:20 -0600
+    Last State:     Terminated
+      Reason:       Error
+      Exit Code:    3
+      Started:      Thu, 10 Sep 2026 23:14:56 -0600
+      Finished:     Thu, 10 Sep 2026 23:14:59 -0600
+    Ready:          True
+    Restart Count:  2
+    Limits:
+      cpu:     400m
+      memory:  384Mi
+    Requests:
+      cpu:      10m
+      memory:   96Mi
+    Liveness:   http-get http://:http/health/live delay=0s timeout=3s period=15s #success=1 #failure=3
+    Readiness:  http-get http://:http/health/ready delay=0s timeout=3s period=10s #success=1 #failure=3
+    Startup:    http-get http://:http/health/live delay=5s timeout=3s period=5s #success=1 #failure=24
+    Environment Variables from:
+      sa-platform-config  ConfigMap  Optional: false
+      sa-platform-secret  Secret     Optional: false
+    Environment:
+      PORT:          8000
+      DB_SCHEMA:     auth
+      SERVICE_NAME:  auth-service
+      ROOT_PATH:     /auth
+      POD_NAME:      sa-platform-auth-service-5cf475865b-nktr5 (v1:metadata.name)
+    Mounts:
+      /tmp from tmp (rw)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  tmp:
+    Type:        EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:      
+    SizeLimit:   <unset>
+QoS Class:       Burstable
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                 node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                  From               Message
+  ----     ------     ----                 ----               -------
+  Normal   Scheduled  115s                 default-scheduler  Successfully assigned sa-p7/sa-platform-auth-service-5cf475865b-nktr5 to p7-202100265-control-plane
+  Warning  BackOff    100s (x3 over 107s)  kubelet            Back-off restarting failed container auth-service in pod sa-platform-auth-service-5cf475865b-nktr5_sa-p7(527c435c-47c4-4b22-ba9f-c26bb9dbbdb6)
+  Normal   Pulled     87s (x3 over 115s)   kubelet            Container image "p7-auth-service:local" already present on machine
+  Normal   Created    87s (x3 over 115s)   kubelet            Created container auth-service
+  Normal   Started    87s (x3 over 115s)   kubelet            Started container auth-service
+
+
+Name:             sa-platform-books-service-74cb6f59d4-jbfg8
+Namespace:        sa-p7
+Priority:         0
+Service Account:  sa-platform-books-service-sa
+Node:             p7-202100265-control-plane/172.22.0.3
+Start Time:       Thu, 10 Sep 2026 23:14:52 -0600
+Labels:           app.kubernetes.io/component=books-service
+                  app.kubernetes.io/instance=sa-platform
+                  app.kubernetes.io/name=sa-platform
+                  pod-template-hash=74cb6f59d4
+                  sa-p5/db-client=true
+Annotations:      checksum/config: 9270ce08c84fb4a3dd2f406e14567079cc0646a7c06857c6f38f37589bc803c3
+                  checksum/secret: e0b7826b3d3568a49872ecb30c3732e8433a03c53f70a395b41f9e9fa7de3afb
+Status:           Running
+SeccompProfile:   RuntimeDefault
+IP:               10.244.0.19
+IPs:
+  IP:           10.244.0.19
+Controlled By:  ReplicaSet/sa-platform-books-service-74cb6f59d4
+Containers:
+  books-service:
+    Container ID:   containerd://ef35a4854e6a5325c06aac5379f6d228e4e9a79e3dac3bafbf60c4849a4390d7
+    Image:          p7-books-service:local
+    Image ID:       docker.io/library/import-2026-09-11@sha256:d9ece15c09b7ec8123828052929d1dd23a49d49e25b5d9f352ad2efae4c40bf5
+    Port:           8001/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Thu, 10 Sep 2026 23:15:19 -0600
+    Last State:     Terminated
+      Reason:       Error
+      Exit Code:    3
+      Started:      Thu, 10 Sep 2026 23:14:56 -0600
+      Finished:     Thu, 10 Sep 2026 23:14:59 -0600
+    Ready:          True
+    Restart Count:  2
+    Limits:
+      cpu:     400m
+      memory:  384Mi
+    Requests:
+      cpu:      10m
+      memory:   96Mi
+    Liveness:   http-get http://:http/health/live delay=0s timeout=3s period=15s #success=1 #failure=3
+    Readiness:  http-get http://:http/health/ready delay=0s timeout=3s period=10s #success=1 #failure=3
+    Startup:    http-get http://:http/health/live delay=5s timeout=3s period=5s #success=1 #failure=24
+    Environment Variables from:
+      sa-platform-config  ConfigMap  Optional: false
+      sa-platform-secret  Secret     Optional: false
+    Environment:
+      PORT:          8001
+      DB_SCHEMA:     books
+      SERVICE_NAME:  books-service
+      ROOT_PATH:     /books
+      POD_NAME:      sa-platform-books-service-74cb6f59d4-jbfg8 (v1:metadata.name)
+    Mounts:
+      /tmp from tmp (rw)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  tmp:
+    Type:        EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:      
+    SizeLimit:   <unset>
+QoS Class:       Burstable
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                 node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                  From               Message
+  ----     ------     ----                 ----               -------
+  Normal   Scheduled  115s                 default-scheduler  Successfully assigned sa-p7/sa-platform-books-service-74cb6f59d4-jbfg8 to p7-202100265-control-plane
+  Warning  BackOff    100s (x3 over 108s)  kubelet            Back-off restarting failed container books-service in pod sa-platform-books-service-74cb6f59d4-jbfg8_sa-p7(7bde3713-0f5e-449f-a494-9e3f916f5109)
+  Normal   Pulled     88s (x3 over 115s)   kubelet            Container image "p7-books-service:local" already present on machine
+  Normal   Created    88s (x3 over 115s)   kubelet            Created container books-service
+  Normal   Started    88s (x3 over 115s)   kubelet            Started container books-service
+
+
+Name:             sa-platform-cronjob-insert-29818396-5jsnj
+Namespace:        sa-p7
+Priority:         0
+Service Account:  sa-platform-cronjob-insert-sa
+Node:             p7-202100265-control-plane/172.22.0.3
+Start Time:       Thu, 10 Sep 2026 23:16:00 -0600
+Labels:           app.kubernetes.io/component=cronjob-insert
+                  app.kubernetes.io/instance=sa-platform
+                  app.kubernetes.io/name=sa-platform
+                  batch.kubernetes.io/controller-uid=7f7a8c87-bbee-4ee7-a7d1-0c88d61af913
+                  batch.kubernetes.io/job-name=sa-platform-cronjob-insert-29818396
+                  controller-uid=7f7a8c87-bbee-4ee7-a7d1-0c88d61af913
+                  job-name=sa-platform-cronjob-insert-29818396
+                  sa-p5/db-client=true
+Annotations:      checksum/config: 9270ce08c84fb4a3dd2f406e14567079cc0646a7c06857c6f38f37589bc803c3
+Status:           Succeeded
+SeccompProfile:   RuntimeDefault
+IP:               10.244.0.26
+IPs:
+  IP:           10.244.0.26
+Controlled By:  Job/sa-platform-cronjob-insert-29818396
+Containers:
+  cronjob-insert:
+    Container ID:   containerd://1019d5bbd4e9e4241bb27861dd43ca850c56c4c56ff43a17a37db1b6c32203c9
+    Image:          p7-cronjob-insert:local
+    Image ID:       docker.io/library/import-2026-09-11@sha256:0d2be16036307cdb4e3262e41dc6d52017b84a94ca2c6f48deac56c816c1cb90
+    Port:           <none>
+    Host Port:      <none>
+    State:          Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Thu, 10 Sep 2026 23:16:00 -0600
+      Finished:     Thu, 10 Sep 2026 23:16:03 -0600
+    Ready:          False
+    Restart Count:  0
+    Limits:
+      cpu:     200m
+      memory:  128Mi
+    Requests:
+      cpu:     25m
+      memory:  64Mi
+    Environment Variables from:
+      sa-platform-config  ConfigMap  Optional: false
+      sa-platform-secret  Secret     Optional: false
+    Environment:
+      DB_SCHEMA:  cronjobs
+    Mounts:
+      /tmp from tmp (rw)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   False 
+  Initialized                 True 
+  Ready                       False 
+  ContainersReady             False 
+  PodScheduled                True 
+Volumes:
+  tmp:
+    Type:        EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:      
+    SizeLimit:   <unset>
+QoS Class:       Burstable
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                 node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  47s   default-scheduler  Successfully assigned sa-p7/sa-platform-cronjob-insert-29818396-5jsnj to p7-202100265-control-plane
+  Normal  Pulled     47s   kubelet            Container image "p7-cronjob-insert:local" already present on machine
+  Normal  Created    47s   kubelet            Created container cronjob-insert
+  Normal  Started    47s   kubelet            Started container cronjob-insert
+
+
+Name:             sa-platform-loans-service-67d5d9c8f5-n7wcj
+Namespace:        sa-p7
+Priority:         0
+Service Account:  sa-platform-loans-service-sa
+Node:             p7-202100265-control-plane/172.22.0.3
+Start Time:       Thu, 10 Sep 2026 23:14:52 -0600
+Labels:           app.kubernetes.io/component=loans-service
+                  app.kubernetes.io/instance=sa-platform
+                  app.kubernetes.io/name=sa-platform
+                  pod-template-hash=67d5d9c8f5
+                  sa-p5/broker-client=true
+                  sa-p5/db-client=true
+Annotations:      checksum/config: 9270ce08c84fb4a3dd2f406e14567079cc0646a7c06857c6f38f37589bc803c3
+                  checksum/secret: e0b7826b3d3568a49872ecb30c3732e8433a03c53f70a395b41f9e9fa7de3afb
+Status:           Running
+SeccompProfile:   RuntimeDefault
+IP:               10.244.0.20
+IPs:
+  IP:           10.244.0.20
+Controlled By:  ReplicaSet/sa-platform-loans-service-67d5d9c8f5
+Containers:
+  loans-service:
+    Container ID:   containerd://b34fb640e6e489a0ee4844cecc2edb6dc753f4d3850a9cfa086982077fbcb34e
+    Image:          p7-loans-service:local
+    Image ID:       docker.io/library/import-2026-09-11@sha256:3d455c09ba1c3f41f6f78ef8efb22e58e213ea0839b418e82a9e5099ecc44a6a
+    Port:           8002/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Thu, 10 Sep 2026 23:15:22 -0600
+    Last State:     Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Thu, 10 Sep 2026 23:14:55 -0600
+      Finished:     Thu, 10 Sep 2026 23:14:58 -0600
+    Ready:          True
+    Restart Count:  2
+    Limits:
+      cpu:     300m
+      memory:  256Mi
+    Requests:
+      cpu:      10m
+      memory:   64Mi
+    Liveness:   http-get http://:http/health/live delay=0s timeout=3s period=15s #success=1 #failure=3
+    Readiness:  http-get http://:http/health/ready delay=0s timeout=3s period=10s #success=1 #failure=3
+    Startup:    http-get http://:http/health/live delay=5s timeout=3s period=5s #success=1 #failure=18
+    Environment Variables from:
+      sa-platform-config  ConfigMap  Optional: false
+      sa-platform-secret  Secret     Optional: false
+    Environment:
+      PORT:          8002
+      DB_SCHEMA:     loans
+      SERVICE_NAME:  loans-service
+      POD_NAME:      sa-platform-loans-service-67d5d9c8f5-n7wcj (v1:metadata.name)
+    Mounts:
+      /tmp from tmp (rw)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  tmp:
+    Type:        EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:      
+    SizeLimit:   <unset>
+QoS Class:       Burstable
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                 node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                  From               Message
+  ----     ------     ----                 ----               -------
+  Normal   Scheduled  115s                 default-scheduler  Successfully assigned sa-p7/sa-platform-loans-service-67d5d9c8f5-n7wcj to p7-202100265-control-plane
+  Warning  BackOff    100s (x3 over 109s)  kubelet            Back-off restarting failed container loans-service in pod sa-platform-loans-service-67d5d9c8f5-n7wcj_sa-p7(19d467cf-61d7-4ed2-9245-2480990912d4)
+  Normal   Pulled     85s (x3 over 115s)   kubelet            Container image "p7-loans-service:local" already present on machine
+  Normal   Created    85s (x3 over 115s)   kubelet            Created container loans-service
+  Normal   Started    85s (x3 over 115s)   kubelet            Started container loans-service
+
+
+Name:             sa-platform-notifications-service-76466f6f6b-ld7wz
+Namespace:        sa-p7
+Priority:         0
+Service Account:  sa-platform-notifications-service-sa
+Node:             p7-202100265-control-plane/172.22.0.3
+Start Time:       Thu, 10 Sep 2026 23:14:52 -0600
+Labels:           app.kubernetes.io/component=notifications-service
+                  app.kubernetes.io/instance=sa-platform
+                  app.kubernetes.io/name=sa-platform
+                  pod-template-hash=76466f6f6b
+                  sa-p5/broker-client=true
+                  sa-p5/db-client=true
+Annotations:      checksum/config: 9270ce08c84fb4a3dd2f406e14567079cc0646a7c06857c6f38f37589bc803c3
+                  checksum/secret: e0b7826b3d3568a49872ecb30c3732e8433a03c53f70a395b41f9e9fa7de3afb
+Status:           Running
+SeccompProfile:   RuntimeDefault
+IP:               10.244.0.18
+IPs:
+  IP:           10.244.0.18
+Controlled By:  ReplicaSet/sa-platform-notifications-service-76466f6f6b
+Containers:
+  notifications-service:
+    Container ID:   containerd://4f51e84cca0ca76b26f3949ddb1946533fa942231bc95debc47a33670482e750
+    Image:          p7-notifications-service:local
+    Image ID:       docker.io/library/import-2026-09-11@sha256:572da432b7f0878c7755461c37ce8121fb51006ecac20a0f5d738ea138c9c32a
+    Port:           8003/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Thu, 10 Sep 2026 23:15:07 -0600
+    Last State:     Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Thu, 10 Sep 2026 23:14:54 -0600
+      Finished:     Thu, 10 Sep 2026 23:14:56 -0600
+    Ready:          True
+    Restart Count:  2
+    Limits:
+      cpu:     300m
+      memory:  256Mi
+    Requests:
+      cpu:      10m
+      memory:   64Mi
+    Liveness:   http-get http://:http/health/live delay=0s timeout=3s period=15s #success=1 #failure=3
+    Readiness:  http-get http://:http/health/ready delay=0s timeout=3s period=10s #success=1 #failure=3
+    Startup:    http-get http://:http/health/live delay=5s timeout=3s period=5s #success=1 #failure=18
+    Environment Variables from:
+      sa-platform-config  ConfigMap  Optional: false
+      sa-platform-secret  Secret     Optional: false
+    Environment:
+      PORT:          8003
+      DB_SCHEMA:     notifications
+      SERVICE_NAME:  notifications-service
+      POD_NAME:      sa-platform-notifications-service-76466f6f6b-ld7wz (v1:metadata.name)
+    Mounts:
+      /tmp from tmp (rw)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  tmp:
+    Type:        EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:      
+    SizeLimit:   <unset>
+QoS Class:       Burstable
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                 node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                  From               Message
+  ----     ------     ----                 ----               -------
+  Normal   Scheduled  115s                 default-scheduler  Successfully assigned sa-p7/sa-platform-notifications-service-76466f6f6b-ld7wz to p7-202100265-control-plane
+  Warning  BackOff    105s (x3 over 111s)  kubelet            Back-off restarting failed container notifications-service in pod sa-platform-notifications-service-76466f6f6b-ld7wz_sa-p7(9fd390d6-b0ed-490d-92e4-a9e95418e985)
+  Normal   Pulled     100s (x3 over 115s)  kubelet            Container image "p7-notifications-service:local" already present on machine
+  Normal   Created    100s (x3 over 115s)  kubelet            Created container notifications-service
+  Normal   Started    100s (x3 over 115s)  kubelet            Started container notifications-service
+  Warning  Unhealthy  85s (x3 over 95s)    kubelet            Startup probe failed: Get "http://10.244.0.18:8003/health/live": dial tcp 10.244.0.18:8003: connect: connection refused
+
+
+Name:             sa-platform-postgresql-0
+Namespace:        sa-p7
+Priority:         0
+Service Account:  sa-platform-postgresql
+Node:             p7-202100265-control-plane/172.22.0.3
+Start Time:       Thu, 10 Sep 2026 23:14:56 -0600
+Labels:           app.kubernetes.io/component=primary
+                  app.kubernetes.io/instance=sa-platform
+                  app.kubernetes.io/managed-by=Helm
+                  app.kubernetes.io/name=postgresql
+                  app.kubernetes.io/version=16.4.0
+                  apps.kubernetes.io/pod-index=0
+                  controller-revision-hash=sa-platform-postgresql-86f8dd5448
+                  helm.sh/chart=postgresql-15.5.38
+                  statefulset.kubernetes.io/pod-name=sa-platform-postgresql-0
+Annotations:      <none>
+Status:           Running
+IP:               10.244.0.24
+IPs:
+  IP:           10.244.0.24
+Controlled By:  StatefulSet/sa-platform-postgresql
+Containers:
+  postgresql:
+    Container ID:    containerd://407decd31372d3d82e2e1ef5ad76238c30719e70511da23153525e619ad6b888
+    Image:           docker.io/bitnamilegacy/postgresql:16.4.0-debian-12-r14
+    Image ID:        docker.io/bitnamilegacy/postgresql@sha256:94bc968141e790ef9a23202cca6b53b44f295672b0bbdb1d5855384e6c2dac1f
+    Port:            5432/TCP
+    Host Port:       0/TCP
+    SeccompProfile:  RuntimeDefault
+    State:           Running
+      Started:       Thu, 10 Sep 2026 23:14:56 -0600
+    Ready:           True
+    Restart Count:   0
+    Limits:
+      cpu:     500m
+      memory:  512Mi
+    Requests:
+      cpu:      50m
+      memory:   192Mi
+    Liveness:   exec [/bin/sh -c exec pg_isready -U "biblioteca" -d "dbname=biblioteca" -h 127.0.0.1 -p 5432] delay=30s timeout=5s period=10s #success=1 #failure=6
+    Readiness:  exec [/bin/sh -c -e exec pg_isready -U "biblioteca" -d "dbname=biblioteca" -h 127.0.0.1 -p 5432
+] delay=5s timeout=5s period=10s #success=1 #failure=6
+    Environment:
+      BITNAMI_DEBUG:                        false
+      POSTGRESQL_PORT_NUMBER:               5432
+      POSTGRESQL_VOLUME_DIR:                /bitnami/postgresql
+      PGDATA:                               /bitnami/postgresql/data
+      POSTGRES_USER:                        biblioteca
+      POSTGRES_PASSWORD:                    <set to the key 'password' in secret 'sa-platform-postgresql'>           Optional: false
+      POSTGRES_POSTGRES_PASSWORD:           <set to the key 'postgres-password' in secret 'sa-platform-postgresql'>  Optional: false
+      POSTGRES_DATABASE:                    biblioteca
+      POSTGRESQL_ENABLE_LDAP:               no
+      POSTGRESQL_ENABLE_TLS:                no
+      POSTGRESQL_LOG_HOSTNAME:              false
+      POSTGRESQL_LOG_CONNECTIONS:           false
+      POSTGRESQL_LOG_DISCONNECTIONS:        false
+      POSTGRESQL_PGAUDIT_LOG_CATALOG:       off
+      POSTGRESQL_CLIENT_MIN_MESSAGES:       error
+      POSTGRESQL_SHARED_PRELOAD_LIBRARIES:  pgaudit
+    Mounts:
+      /bitnami/postgresql from data (rw)
+      /dev/shm from dshm (rw)
+      /opt/bitnami/postgresql/conf from empty-dir (rw,path="app-conf-dir")
+      /opt/bitnami/postgresql/tmp from empty-dir (rw,path="app-tmp-dir")
+      /tmp from empty-dir (rw,path="tmp-dir")
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  data:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  data-sa-platform-postgresql-0
+    ReadOnly:   false
+  empty-dir:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  dshm:
+    Type:        EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:      Memory
+    SizeLimit:   <unset>
+QoS Class:       Burstable
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                 node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  111s  default-scheduler  Successfully assigned sa-p7/sa-platform-postgresql-0 to p7-202100265-control-plane
+  Normal  Pulled     111s  kubelet            Container image "docker.io/bitnamilegacy/postgresql:16.4.0-debian-12-r14" already present on machine
+  Normal  Created    111s  kubelet            Created container postgresql
+  Normal  Started    111s  kubelet            Started container postgresql
+
+
+Name:             sa-platform-rabbitmq-0
+Namespace:        sa-p7
+Priority:         0
+Service Account:  sa-platform-rabbitmq
+Node:             p7-202100265-control-plane/172.22.0.3
+Start Time:       Thu, 10 Sep 2026 23:14:56 -0600
+Labels:           app.kubernetes.io/instance=sa-platform
+                  app.kubernetes.io/managed-by=Helm
+                  app.kubernetes.io/name=rabbitmq
+                  app.kubernetes.io/version=4.1.3
+                  apps.kubernetes.io/pod-index=0
+                  controller-revision-hash=sa-platform-rabbitmq-745c99c7f8
+                  helm.sh/chart=rabbitmq-16.0.14
+                  statefulset.kubernetes.io/pod-name=sa-platform-rabbitmq-0
+Annotations:      checksum/config: 0a2f9d46b5de05a6b0d94811c3b39bdb489155c2feed63ee8ad89de0a8beecec
+                  checksum/secret: 894ed8c5b1b4607442dae9f53f94f26662fd34f68935f9993e205b2ee77232c0
+Status:           Running
+IP:               10.244.0.25
+IPs:
+  IP:           10.244.0.25
+Controlled By:  StatefulSet/sa-platform-rabbitmq
+Init Containers:
+  prepare-plugins-dir:
+    Container ID:    containerd://fad70a5db83a0eafb4deb597f16c98d3da378500a73d11b0c2e51662c4c1c2bc
+    Image:           docker.io/bitnamilegacy/rabbitmq:4.1.3-debian-12-r1
+    Image ID:        docker.io/bitnamilegacy/rabbitmq@sha256:9e635efba43143807c003fd52cd741e88ae1b45e4f5739105c8bf8f6f94912fe
+    Port:            <none>
+    Host Port:       <none>
+    SeccompProfile:  RuntimeDefault
+    Command:
+      /bin/bash
+    Args:
+      -ec
+      #!/bin/bash
+      
+      . /opt/bitnami/scripts/liblog.sh
+      
+      info "Copying plugins dir to empty dir"
+      # In order to not break the possibility of installing custom plugins, we need
+      # to make the plugins directory writable, so we need to copy it to an empty dir volume
+      cp -r --preserve=mode /opt/bitnami/rabbitmq/plugins/ /emptydir/app-plugins-dir
+      
+    State:          Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Thu, 10 Sep 2026 23:14:56 -0600
+      Finished:     Thu, 10 Sep 2026 23:14:56 -0600
+    Ready:          True
+    Restart Count:  0
+    Limits:
+      cpu:     500m
+      memory:  768Mi
+    Requests:
+      cpu:        50m
+      memory:     256Mi
+    Environment:  <none>
+    Mounts:
+      /emptydir from empty-dir (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-vd8sp (ro)
+Containers:
+  rabbitmq:
+    Container ID:    containerd://1f9eb8e6bdb5c59ba4ae0d4552056a149a6720351e56b0d8737cb9d67fb3b383
+    Image:           docker.io/bitnamilegacy/rabbitmq:4.1.3-debian-12-r1
+    Image ID:        docker.io/bitnamilegacy/rabbitmq@sha256:9e635efba43143807c003fd52cd741e88ae1b45e4f5739105c8bf8f6f94912fe
+    Ports:           5672/TCP, 25672/TCP, 15672/TCP, 4369/TCP, 9419/TCP
+    Host Ports:      0/TCP, 0/TCP, 0/TCP, 0/TCP, 0/TCP
+    SeccompProfile:  RuntimeDefault
+    State:           Running
+      Started:       Thu, 10 Sep 2026 23:14:57 -0600
+    Ready:           True
+    Restart Count:   0
+    Limits:
+      cpu:     500m
+      memory:  768Mi
+    Requests:
+      cpu:      50m
+      memory:   256Mi
+    Liveness:   exec [/bin/bash -ec curl -f --user biblioteca:$(< $RABBITMQ_PASSWORD_FILE) 127.0.0.1:15672/api/health/checks/virtual-hosts] delay=120s timeout=20s period=30s #success=1 #failure=6
+    Readiness:  exec [/bin/bash -ec curl -f --user biblioteca:$(< $RABBITMQ_PASSWORD_FILE) 127.0.0.1:15672/api/health/checks/local-alarms] delay=10s timeout=20s period=30s #success=1 #failure=3
+    Environment:
+      BITNAMI_DEBUG:              false
+      MY_POD_IP:                   (v1:status.podIP)
+      MY_POD_NAME:                sa-platform-rabbitmq-0 (v1:metadata.name)
+      MY_POD_NAMESPACE:           sa-p7 (v1:metadata.namespace)
+      RABBITMQ_FORCE_BOOT:        no
+      RABBITMQ_NODE_NAME:         rabbit@$(MY_POD_NAME).sa-platform-rabbitmq-headless.$(MY_POD_NAMESPACE).svc.cluster.local
+      RABBITMQ_UPDATE_PASSWORD:   no
+      RABBITMQ_MNESIA_DIR:        /opt/bitnami/rabbitmq/.rabbitmq/mnesia/$(RABBITMQ_NODE_NAME)
+      RABBITMQ_LDAP_ENABLE:       no
+      RABBITMQ_LOGS:              -
+      RABBITMQ_ULIMIT_NOFILES:    65535
+      RABBITMQ_USE_LONGNAME:      true
+      RABBITMQ_ERL_COOKIE_FILE:   /opt/bitnami/rabbitmq/secrets/rabbitmq-erlang-cookie
+      RABBITMQ_LOAD_DEFINITIONS:  no
+      RABBITMQ_DEFINITIONS_FILE:  /app/load_definition.json
+      RABBITMQ_SECURE_PASSWORD:   yes
+      RABBITMQ_USERNAME:          biblioteca
+      RABBITMQ_PASSWORD_FILE:     /opt/bitnami/rabbitmq/secrets/rabbitmq-password
+      RABBITMQ_PLUGINS:           rabbitmq_management, rabbitmq_peer_discovery_k8s, rabbitmq_auth_backend_ldap
+    Mounts:
+      /bitnami/rabbitmq/conf from configuration (rw)
+      /opt/bitnami/rabbitmq/.rabbitmq/ from empty-dir (rw,path="app-erlang-cookie")
+      /opt/bitnami/rabbitmq/.rabbitmq/mnesia from data (rw)
+      /opt/bitnami/rabbitmq/etc/rabbitmq from empty-dir (rw,path="app-conf-dir")
+      /opt/bitnami/rabbitmq/plugins from empty-dir (rw,path="app-plugins-dir")
+      /opt/bitnami/rabbitmq/secrets from rabbitmq-secrets (rw)
+      /opt/bitnami/rabbitmq/var/lib/rabbitmq from empty-dir (rw,path="app-tmp-dir")
+      /opt/bitnami/rabbitmq/var/log/rabbitmq from empty-dir (rw,path="app-logs-dir")
+      /tmp from empty-dir (rw,path="tmp-dir")
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-vd8sp (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  data:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  data-sa-platform-rabbitmq-0
+    ReadOnly:   false
+  empty-dir:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  configuration:
+    Type:                Projected (a volume that contains injected data from multiple sources)
+    SecretName:          sa-platform-rabbitmq-config
+    SecretOptionalName:  <nil>
+  rabbitmq-secrets:
+    Type:                Projected (a volume that contains injected data from multiple sources)
+    SecretName:          sa-platform-rabbitmq
+    SecretOptionalName:  <nil>
+    SecretName:          sa-platform-rabbitmq
+    SecretOptionalName:  <nil>
+  kube-api-access-vd8sp:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  111s  default-scheduler  Successfully assigned sa-p7/sa-platform-rabbitmq-0 to p7-202100265-control-plane
+  Normal  Pulled     111s  kubelet            Container image "docker.io/bitnamilegacy/rabbitmq:4.1.3-debian-12-r1" already present on machine
+  Normal  Created    111s  kubelet            Created container prepare-plugins-dir
+  Normal  Started    111s  kubelet            Started container prepare-plugins-dir
+  Normal  Pulled     110s  kubelet            Container image "docker.io/bitnamilegacy/rabbitmq:4.1.3-debian-12-r1" already present on machine
+  Normal  Created    110s  kubelet            Created container rabbitmq
+  Normal  Started    110s  kubelet            Started container rabbitmq

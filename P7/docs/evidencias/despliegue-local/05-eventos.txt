@@ -1,0 +1,146 @@
+LAST SEEN   TYPE      REASON                            OBJECT                                                    MESSAGE
+4m23s       Normal    SuccessfulCreate                  statefulset/sa-platform-postgresql                        create Claim data-sa-platform-postgresql-0 Pod sa-platform-postgresql-0 in StatefulSet sa-platform-postgresql success
+4m23s       Normal    WaitForFirstConsumer              persistentvolumeclaim/data-sa-platform-postgresql-0       waiting for first consumer to be created before binding
+4m23s       Normal    Provisioning                      persistentvolumeclaim/data-sa-platform-postgresql-0       External provisioner is provisioning volume for claim "sa-p7/data-sa-platform-postgresql-0"
+4m23s       Normal    SuccessfulCreate                  statefulset/sa-platform-postgresql                        create Pod sa-platform-postgresql-0 in StatefulSet sa-platform-postgresql successful
+4m23s       Normal    NoPods                            poddisruptionbudget/sa-platform-postgresql                No matching pods found
+4m23s       Normal    SuccessfulCreate                  statefulset/sa-platform-rabbitmq                          create Pod sa-platform-rabbitmq-0 in StatefulSet sa-platform-rabbitmq successful
+4m23s       Normal    Provisioning                      persistentvolumeclaim/data-sa-platform-rabbitmq-0         External provisioner is provisioning volume for claim "sa-p7/data-sa-platform-rabbitmq-0"
+4m23s       Normal    NoPods                            poddisruptionbudget/sa-platform-rabbitmq                  No matching pods found
+4m23s       Normal    WaitForFirstConsumer              persistentvolumeclaim/data-sa-platform-rabbitmq-0         waiting for first consumer to be created before binding
+4m23s       Normal    ExternalProvisioning              persistentvolumeclaim/data-sa-platform-rabbitmq-0         Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+4m23s       Normal    ExternalProvisioning              persistentvolumeclaim/data-sa-platform-postgresql-0       Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+4m23s       Normal    SuccessfulCreate                  statefulset/sa-platform-rabbitmq                          create Claim data-sa-platform-rabbitmq-0 Pod sa-platform-rabbitmq-0 in StatefulSet sa-platform-rabbitmq success
+4m19s       Normal    ProvisioningSucceeded             persistentvolumeclaim/data-sa-platform-rabbitmq-0         Successfully provisioned volume pvc-ef150a3c-3a3b-432b-9130-50d5af95c19f
+4m19s       Normal    Scheduled                         pod/sa-platform-postgresql-0                              Successfully assigned sa-p7/sa-platform-postgresql-0 to p7-202100265-control-plane
+4m19s       Normal    ProvisioningSucceeded             persistentvolumeclaim/data-sa-platform-postgresql-0       Successfully provisioned volume pvc-279747ff-1bcb-46be-9dea-c3d20fbd24e3
+4m19s       Normal    Scheduled                         pod/sa-platform-rabbitmq-0                                Successfully assigned sa-p7/sa-platform-rabbitmq-0 to p7-202100265-control-plane
+4m18s       Normal    Pulling                           pod/sa-platform-postgresql-0                              Pulling image "docker.io/bitnamilegacy/postgresql:16.4.0-debian-12-r14"
+4m18s       Normal    Pulling                           pod/sa-platform-rabbitmq-0                                Pulling image "docker.io/bitnamilegacy/rabbitmq:4.1.3-debian-12-r1"
+4m10s       Normal    Pulled                            pod/sa-platform-postgresql-0                              Successfully pulled image "docker.io/bitnamilegacy/postgresql:16.4.0-debian-12-r14" in 8.579s (8.579s including waiting). Image size: 109352343 bytes.
+4m10s       Normal    Created                           pod/sa-platform-postgresql-0                              Created container postgresql
+4m9s        Normal    Started                           pod/sa-platform-postgresql-0                              Started container postgresql
+3m53s       Normal    Created                           pod/sa-platform-rabbitmq-0                                Created container prepare-plugins-dir
+3m53s       Normal    Pulled                            pod/sa-platform-rabbitmq-0                                Successfully pulled image "docker.io/bitnamilegacy/rabbitmq:4.1.3-debian-12-r1" in 16.757s (25.336s including waiting). Image size: 182387355 bytes.
+3m53s       Normal    Started                           pod/sa-platform-rabbitmq-0                                Started container prepare-plugins-dir
+3m51s       Normal    Created                           pod/sa-platform-rabbitmq-0                                Created container rabbitmq
+3m51s       Normal    Pulled                            pod/sa-platform-rabbitmq-0                                Container image "docker.io/bitnamilegacy/rabbitmq:4.1.3-debian-12-r1" already present on machine
+3m51s       Normal    Started                           pod/sa-platform-rabbitmq-0                                Started container rabbitmq
+3m30s       Normal    ScalingReplicaSet                 deployment/sa-platform-auth-service                       Scaled up replica set sa-platform-auth-service-69984956c6 to 1
+3m30s       Normal    SuccessfulCreate                  replicaset/sa-platform-auth-service-69984956c6            Created pod: sa-platform-auth-service-69984956c6-k5zrq
+3m30s       Normal    ScalingReplicaSet                 deployment/sa-platform-api-gateway                        Scaled up replica set sa-platform-api-gateway-5675f755f7 to 1
+3m30s       Normal    SuccessfulCreate                  replicaset/sa-platform-api-gateway-5675f755f7             Created pod: sa-platform-api-gateway-5675f755f7-pbmbg
+3m30s       Normal    Scheduled                         pod/sa-platform-auth-service-69984956c6-k5zrq             Successfully assigned sa-p7/sa-platform-auth-service-69984956c6-k5zrq to p7-202100265-control-plane
+3m30s       Normal    ScalingReplicaSet                 deployment/sa-platform-books-service                      Scaled up replica set sa-platform-books-service-5c65fb986d to 1
+3m30s       Normal    ScalingReplicaSet                 deployment/sa-platform-loans-service                      Scaled up replica set sa-platform-loans-service-54c66bff75 to 1
+3m30s       Normal    Scheduled                         pod/sa-platform-api-gateway-5675f755f7-pbmbg              Successfully assigned sa-p7/sa-platform-api-gateway-5675f755f7-pbmbg to p7-202100265-control-plane
+3m29s       Normal    Scheduled                         pod/sa-platform-notifications-service-d4cdb776b-gjwl8     Successfully assigned sa-p7/sa-platform-notifications-service-d4cdb776b-gjwl8 to p7-202100265-control-plane
+3m29s       Normal    SuccessfulCreate                  replicaset/sa-platform-loans-service-54c66bff75           Created pod: sa-platform-loans-service-54c66bff75-x9mk2
+3m29s       Normal    Created                           pod/sa-platform-api-gateway-5675f755f7-pbmbg              Created container api-gateway
+3m29s       Normal    Scheduled                         pod/sa-platform-loans-service-54c66bff75-x9mk2            Successfully assigned sa-p7/sa-platform-loans-service-54c66bff75-x9mk2 to p7-202100265-control-plane
+3m29s       Normal    Started                           pod/sa-platform-api-gateway-5675f755f7-pbmbg              Started container api-gateway
+3m29s       Normal    SuccessfulCreate                  replicaset/sa-platform-books-service-5c65fb986d           Created pod: sa-platform-books-service-5c65fb986d-47gzr
+3m29s       Normal    ScalingReplicaSet                 deployment/sa-platform-notifications-service              Scaled up replica set sa-platform-notifications-service-d4cdb776b to 1
+3m29s       Normal    SuccessfulCreate                  replicaset/sa-platform-notifications-service-d4cdb776b    Created pod: sa-platform-notifications-service-d4cdb776b-gjwl8
+3m29s       Normal    Scheduled                         pod/sa-platform-books-service-5c65fb986d-47gzr            Successfully assigned sa-p7/sa-platform-books-service-5c65fb986d-47gzr to p7-202100265-control-plane
+3m29s       Normal    Pulled                            pod/sa-platform-api-gateway-5675f755f7-pbmbg              Container image "p7-api-gateway:local" already present on machine
+2m47s       Normal    SuccessfulCreate                  cronjob/sa-platform-cronjob-insert                        Created job sa-platform-cronjob-insert-29818394
+2m47s       Normal    Scheduled                         pod/sa-platform-cronjob-insert-29818394-vcldd             Successfully assigned sa-p7/sa-platform-cronjob-insert-29818394-vcldd to p7-202100265-control-plane
+2m47s       Normal    SuccessfulCreate                  job/sa-platform-cronjob-insert-29818394                   Created pod: sa-platform-cronjob-insert-29818394-vcldd
+2m41s       Warning   BackOff                           pod/sa-platform-cronjob-insert-29818394-vcldd             Back-off restarting failed container cronjob-insert in pod sa-platform-cronjob-insert-29818394-vcldd_sa-p7(a78350f7-5067-47b1-8e15-f6b5d75100b9)
+2m33s       Normal    Started                           pod/sa-platform-loans-service-54c66bff75-x9mk2            Started container loans-service
+2m33s       Normal    Created                           pod/sa-platform-loans-service-54c66bff75-x9mk2            Created container loans-service
+2m33s       Normal    Pulled                            pod/sa-platform-loans-service-54c66bff75-x9mk2            Container image "p7-loans-service:local" already present on machine
+2m31s       Normal    Started                           pod/sa-platform-books-service-5c65fb986d-47gzr            Started container books-service
+2m31s       Normal    Created                           pod/sa-platform-books-service-5c65fb986d-47gzr            Created container books-service
+2m31s       Normal    Pulled                            pod/sa-platform-books-service-5c65fb986d-47gzr            Container image "p7-books-service:local" already present on machine
+2m30s       Normal    Pulled                            pod/sa-platform-auth-service-69984956c6-k5zrq             Container image "p7-auth-service:local" already present on machine
+2m30s       Normal    Started                           pod/sa-platform-auth-service-69984956c6-k5zrq             Started container auth-service
+2m30s       Normal    Created                           pod/sa-platform-notifications-service-d4cdb776b-gjwl8     Created container notifications-service
+2m30s       Normal    Started                           pod/sa-platform-notifications-service-d4cdb776b-gjwl8     Started container notifications-service
+2m30s       Normal    Created                           pod/sa-platform-auth-service-69984956c6-k5zrq             Created container auth-service
+2m30s       Normal    Pulled                            pod/sa-platform-notifications-service-d4cdb776b-gjwl8     Container image "p7-notifications-service:local" already present on machine
+2m28s       Warning   BackOff                           pod/sa-platform-notifications-service-d4cdb776b-gjwl8     Back-off restarting failed container notifications-service in pod sa-platform-notifications-service-d4cdb776b-gjwl8_sa-p7(7c41352c-0d0c-4a0c-8ddf-dc3533263d99)
+2m28s       Warning   BackOff                           pod/sa-platform-books-service-5c65fb986d-47gzr            Back-off restarting failed container books-service in pod sa-platform-books-service-5c65fb986d-47gzr_sa-p7(8577ccef-e422-4384-8272-6b7e896543d5)
+2m28s       Warning   BackOff                           pod/sa-platform-loans-service-54c66bff75-x9mk2            Back-off restarting failed container loans-service in pod sa-platform-loans-service-54c66bff75-x9mk2_sa-p7(105958f3-4e7c-47a5-a1d1-2c115a4e23f6)
+2m27s       Normal    Created                           pod/sa-platform-cronjob-insert-29818394-vcldd             Created container cronjob-insert
+2m27s       Warning   BackOff                           pod/sa-platform-auth-service-69984956c6-k5zrq             Back-off restarting failed container auth-service in pod sa-platform-auth-service-69984956c6-k5zrq_sa-p7(f0c8ed2e-b2a6-4860-82fb-577abde866b4)
+2m27s       Normal    Started                           pod/sa-platform-cronjob-insert-29818394-vcldd             Started container cronjob-insert
+2m27s       Normal    Pulled                            pod/sa-platform-cronjob-insert-29818394-vcldd             Container image "p7-cronjob-insert:local" already present on machine
+2m26s       Normal    Killing                           pod/sa-platform-cronjob-insert-29818394-vcldd             Stopping container cronjob-insert
+2m26s       Normal    SuccessfulDelete                  job/sa-platform-cronjob-insert-29818394                   Deleted pod: sa-platform-cronjob-insert-29818394-vcldd
+2m25s       Normal    Killing                           pod/sa-platform-postgresql-0                              Stopping container postgresql
+2m25s       Warning   CalculateExpectedPodCountFailed   poddisruptionbudget/sa-platform-postgresql                Failed to calculate the number of expected pods: found no controllers for pod "sa-platform-postgresql-0"
+2m25s       Normal    Killing                           pod/sa-platform-rabbitmq-0                                Stopping container rabbitmq
+2m25s       Warning   CalculateExpectedPodCountFailed   poddisruptionbudget/sa-platform-rabbitmq                  Failed to calculate the number of expected pods: found no controllers for pod "sa-platform-rabbitmq-0"
+2m24s       Normal    Killing                           pod/sa-platform-api-gateway-5675f755f7-pbmbg              Stopping container api-gateway
+2m22s       Warning   Unhealthy                         pod/sa-platform-api-gateway-5675f755f7-pbmbg              Readiness probe failed: HTTP probe failed with statuscode: 503
+115s        Normal    SuccessfulCreate                  replicaset/sa-platform-auth-service-5cf475865b            Created pod: sa-platform-auth-service-5cf475865b-nktr5
+115s        Normal    Provisioning                      persistentvolumeclaim/data-sa-platform-rabbitmq-0         External provisioner is provisioning volume for claim "sa-p7/data-sa-platform-rabbitmq-0"
+115s        Normal    SuccessfulCreate                  statefulset/sa-platform-rabbitmq                          create Pod sa-platform-rabbitmq-0 in StatefulSet sa-platform-rabbitmq successful
+115s        Normal    SuccessfulCreate                  statefulset/sa-platform-rabbitmq                          create Claim data-sa-platform-rabbitmq-0 Pod sa-platform-rabbitmq-0 in StatefulSet sa-platform-rabbitmq success
+115s        Normal    NoPods                            poddisruptionbudget/sa-platform-rabbitmq                  No matching pods found
+115s        Normal    WaitForFirstConsumer              persistentvolumeclaim/data-sa-platform-postgresql-0       waiting for first consumer to be created before binding
+115s        Normal    Scheduled                         pod/sa-platform-loans-service-67d5d9c8f5-n7wcj            Successfully assigned sa-p7/sa-platform-loans-service-67d5d9c8f5-n7wcj to p7-202100265-control-plane
+115s        Normal    ExternalProvisioning              persistentvolumeclaim/data-sa-platform-postgresql-0       Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+115s        Normal    Provisioning                      persistentvolumeclaim/data-sa-platform-postgresql-0       External provisioner is provisioning volume for claim "sa-p7/data-sa-platform-postgresql-0"
+115s        Normal    ScalingReplicaSet                 deployment/sa-platform-auth-service                       Scaled up replica set sa-platform-auth-service-5cf475865b to 1
+115s        Normal    WaitForFirstConsumer              persistentvolumeclaim/data-sa-platform-rabbitmq-0         waiting for first consumer to be created before binding
+115s        Normal    SuccessfulCreate                  replicaset/sa-platform-loans-service-67d5d9c8f5           Created pod: sa-platform-loans-service-67d5d9c8f5-n7wcj
+115s        Normal    ExternalProvisioning              persistentvolumeclaim/data-sa-platform-rabbitmq-0         Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+115s        Normal    ScalingReplicaSet                 deployment/sa-platform-loans-service                      Scaled up replica set sa-platform-loans-service-67d5d9c8f5 to 1
+115s        Normal    Scheduled                         pod/sa-platform-notifications-service-76466f6f6b-ld7wz    Successfully assigned sa-p7/sa-platform-notifications-service-76466f6f6b-ld7wz to p7-202100265-control-plane
+115s        Normal    Scheduled                         pod/sa-platform-auth-service-5cf475865b-nktr5             Successfully assigned sa-p7/sa-platform-auth-service-5cf475865b-nktr5 to p7-202100265-control-plane
+115s        Normal    Scheduled                         pod/sa-platform-books-service-74cb6f59d4-jbfg8            Successfully assigned sa-p7/sa-platform-books-service-74cb6f59d4-jbfg8 to p7-202100265-control-plane
+115s        Normal    Scheduled                         pod/sa-platform-api-gateway-5dfdd8fb9-wvsx5               Successfully assigned sa-p7/sa-platform-api-gateway-5dfdd8fb9-wvsx5 to p7-202100265-control-plane
+115s        Normal    Pulled                            pod/sa-platform-api-gateway-5dfdd8fb9-wvsx5               Container image "p7-api-gateway:local" already present on machine
+115s        Normal    Created                           pod/sa-platform-api-gateway-5dfdd8fb9-wvsx5               Created container api-gateway
+115s        Normal    SuccessfulCreate                  replicaset/sa-platform-notifications-service-76466f6f6b   Created pod: sa-platform-notifications-service-76466f6f6b-ld7wz
+115s        Normal    Started                           pod/sa-platform-api-gateway-5dfdd8fb9-wvsx5               Started container api-gateway
+115s        Normal    SuccessfulCreate                  statefulset/sa-platform-postgresql                        create Pod sa-platform-postgresql-0 in StatefulSet sa-platform-postgresql successful
+115s        Normal    ScalingReplicaSet                 deployment/sa-platform-books-service                      Scaled up replica set sa-platform-books-service-74cb6f59d4 to 1
+115s        Normal    SuccessfulCreate                  replicaset/sa-platform-books-service-74cb6f59d4           Created pod: sa-platform-books-service-74cb6f59d4-jbfg8
+115s        Normal    SuccessfulCreate                  statefulset/sa-platform-postgresql                        create Claim data-sa-platform-postgresql-0 Pod sa-platform-postgresql-0 in StatefulSet sa-platform-postgresql success
+115s        Normal    NoPods                            poddisruptionbudget/sa-platform-postgresql                No matching pods found
+115s        Normal    SuccessfulCreate                  replicaset/sa-platform-api-gateway-5dfdd8fb9              Created pod: sa-platform-api-gateway-5dfdd8fb9-wvsx5
+115s        Normal    ScalingReplicaSet                 deployment/sa-platform-notifications-service              Scaled up replica set sa-platform-notifications-service-76466f6f6b to 1
+115s        Normal    ScalingReplicaSet                 deployment/sa-platform-api-gateway                        Scaled up replica set sa-platform-api-gateway-5dfdd8fb9 to 1
+112s        Normal    ProvisioningSucceeded             persistentvolumeclaim/data-sa-platform-rabbitmq-0         Successfully provisioned volume pvc-11ece35b-c775-4309-9ef0-93feb064f9e9
+112s        Normal    ProvisioningSucceeded             persistentvolumeclaim/data-sa-platform-postgresql-0       Successfully provisioned volume pvc-7669dfbb-ada5-40bb-978a-e1d3a2bf7836
+111s        Normal    Pulled                            pod/sa-platform-postgresql-0                              Container image "docker.io/bitnamilegacy/postgresql:16.4.0-debian-12-r14" already present on machine
+111s        Normal    Scheduled                         pod/sa-platform-postgresql-0                              Successfully assigned sa-p7/sa-platform-postgresql-0 to p7-202100265-control-plane
+111s        Normal    Created                           pod/sa-platform-postgresql-0                              Created container postgresql
+111s        Normal    Started                           pod/sa-platform-postgresql-0                              Started container postgresql
+111s        Normal    Started                           pod/sa-platform-rabbitmq-0                                Started container prepare-plugins-dir
+111s        Normal    Created                           pod/sa-platform-rabbitmq-0                                Created container prepare-plugins-dir
+111s        Normal    Pulled                            pod/sa-platform-rabbitmq-0                                Container image "docker.io/bitnamilegacy/rabbitmq:4.1.3-debian-12-r1" already present on machine
+111s        Normal    Scheduled                         pod/sa-platform-rabbitmq-0                                Successfully assigned sa-p7/sa-platform-rabbitmq-0 to p7-202100265-control-plane
+110s        Normal    Started                           pod/sa-platform-rabbitmq-0                                Started container rabbitmq
+110s        Normal    Created                           pod/sa-platform-rabbitmq-0                                Created container rabbitmq
+110s        Normal    Pulled                            pod/sa-platform-rabbitmq-0                                Container image "docker.io/bitnamilegacy/rabbitmq:4.1.3-debian-12-r1" already present on machine
+105s        Warning   BackOff                           pod/sa-platform-notifications-service-76466f6f6b-ld7wz    Back-off restarting failed container notifications-service in pod sa-platform-notifications-service-76466f6f6b-ld7wz_sa-p7(9fd390d6-b0ed-490d-92e4-a9e95418e985)
+100s        Normal    Created                           pod/sa-platform-notifications-service-76466f6f6b-ld7wz    Created container notifications-service
+100s        Warning   BackOff                           pod/sa-platform-loans-service-67d5d9c8f5-n7wcj            Back-off restarting failed container loans-service in pod sa-platform-loans-service-67d5d9c8f5-n7wcj_sa-p7(19d467cf-61d7-4ed2-9245-2480990912d4)
+100s        Warning   BackOff                           pod/sa-platform-auth-service-5cf475865b-nktr5             Back-off restarting failed container auth-service in pod sa-platform-auth-service-5cf475865b-nktr5_sa-p7(527c435c-47c4-4b22-ba9f-c26bb9dbbdb6)
+100s        Warning   BackOff                           pod/sa-platform-books-service-74cb6f59d4-jbfg8            Back-off restarting failed container books-service in pod sa-platform-books-service-74cb6f59d4-jbfg8_sa-p7(7bde3713-0f5e-449f-a494-9e3f916f5109)
+100s        Normal    Started                           pod/sa-platform-notifications-service-76466f6f6b-ld7wz    Started container notifications-service
+100s        Normal    Pulled                            pod/sa-platform-notifications-service-76466f6f6b-ld7wz    Container image "p7-notifications-service:local" already present on machine
+88s         Normal    Pulled                            pod/sa-platform-books-service-74cb6f59d4-jbfg8            Container image "p7-books-service:local" already present on machine
+88s         Normal    Created                           pod/sa-platform-books-service-74cb6f59d4-jbfg8            Created container books-service
+88s         Normal    Started                           pod/sa-platform-books-service-74cb6f59d4-jbfg8            Started container books-service
+87s         Normal    Started                           pod/sa-platform-auth-service-5cf475865b-nktr5             Started container auth-service
+87s         Normal    Created                           pod/sa-platform-auth-service-5cf475865b-nktr5             Created container auth-service
+87s         Normal    Pulled                            pod/sa-platform-auth-service-5cf475865b-nktr5             Container image "p7-auth-service:local" already present on machine
+85s         Normal    Pulled                            pod/sa-platform-loans-service-67d5d9c8f5-n7wcj            Container image "p7-loans-service:local" already present on machine
+85s         Warning   Unhealthy                         pod/sa-platform-notifications-service-76466f6f6b-ld7wz    Startup probe failed: Get "http://10.244.0.18:8003/health/live": dial tcp 10.244.0.18:8003: connect: connection refused
+85s         Normal    Created                           pod/sa-platform-loans-service-67d5d9c8f5-n7wcj            Created container loans-service
+85s         Warning   Unhealthy                         pod/sa-platform-api-gateway-5dfdd8fb9-wvsx5               Readiness probe failed: HTTP probe failed with statuscode: 503
+85s         Normal    Started                           pod/sa-platform-loans-service-67d5d9c8f5-n7wcj            Started container loans-service
+47s         Normal    Pulled                            pod/sa-platform-cronjob-insert-29818396-5jsnj             Container image "p7-cronjob-insert:local" already present on machine
+47s         Normal    Created                           pod/sa-platform-cronjob-insert-29818396-5jsnj             Created container cronjob-insert
+47s         Normal    Scheduled                         pod/sa-platform-cronjob-insert-29818396-5jsnj             Successfully assigned sa-p7/sa-platform-cronjob-insert-29818396-5jsnj to p7-202100265-control-plane
+47s         Normal    Started                           pod/sa-platform-cronjob-insert-29818396-5jsnj             Started container cronjob-insert
+47s         Normal    SuccessfulCreate                  job/sa-platform-cronjob-insert-29818396                   Created pod: sa-platform-cronjob-insert-29818396-5jsnj
+47s         Normal    SuccessfulCreate                  cronjob/sa-platform-cronjob-insert                        Created job sa-platform-cronjob-insert-29818396
+42s         Normal    SawCompletedJob                   cronjob/sa-platform-cronjob-insert                        Saw completed job: sa-platform-cronjob-insert-29818396, condition: Complete
+42s         Normal    Completed                         job/sa-platform-cronjob-insert-29818396                   Job completed
