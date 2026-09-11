@@ -10,18 +10,34 @@ despliegue en Kubernetes.
 
 ## 1. Ejecución del pipeline en GitHub Actions
 
-Las capturas de la pestaña **Actions** se agregan en
-[`capturas/`](capturas/) conforme se ejecuta el pipeline. Lo que debe mostrar
-cada una:
+Las capturas de la pestaña **Actions** están en [`capturas/`](capturas/),
+tomadas de la ejecución del pipeline sobre el commit `5b90644` de la rama `main`.
 
 | Captura | Qué evidencia |
 |---|---|
-| `01-grafo-pipeline.png` | El grafo completo con las etapas encadenadas en verde |
-| `02-etapa-test.png` | El detalle de la etapa de pruebas, con los casos ejecutados |
+| `00-pipeline-en-ejecucion.png` | El grafo del pipeline mientras corre, con las etapas encadenadas |
+| `01-grafo-pipeline.png` | El grafo completo al finalizar |
+| `02-etapa-test.png` | El detalle de la etapa de pruebas |
 | `03-etapa-docker.png` | La construcción y publicación de las 7 imágenes |
 | `04-paquetes-ghcr.png` | Las imágenes publicadas en GHCR con sus etiquetas |
 | `05-etapa-despliegue.png` | El despliegue en Kubernetes y su verificación |
 | `06-resumen.png` | El resumen del pipeline con el estado de cada etapa |
+
+### Etapa 0 — la versión de la ejecución
+
+La primera etapa calcula la versión que compartirán las siete imágenes, y la
+publica en el resumen del workflow:
+
+| Dato | Valor |
+|---|---|
+| Version | `main-5b90644` |
+| Commit | `5b90644` |
+| Disparador | `push` |
+| Referencia | `main` |
+| Release | `false` |
+
+Que el disparador sea `push` sobre `main` es justamente lo que el enunciado pide
+demostrar: el pipeline arranca solo al integrar un cambio, sin lanzarlo a mano.
 
 Cada ejecución del pipeline publica además un artefacto
 `evidencia-despliegue-<sha>` con el estado completo del clúster, recolectado por

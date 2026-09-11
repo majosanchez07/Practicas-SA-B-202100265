@@ -413,6 +413,16 @@ jobs:
             --docker-username=${{ github.actor }} \
             --docker-password=${{ secrets.GITHUB_TOKEN }}
 
+      # PostgreSQL y RabbitMQ son subcharts declarados en Chart.yaml, y sus
+      # .tgz no se versionan (estan excluidos por .gitignore). En una maquina de
+      # trabajo suelen estar ya descargados en charts/, pero el runner parte de
+      # un clon limpio: sin este paso, helm se detiene con "found in Chart.yaml,
+      # but missing in charts/ directory".
+      - name: Descargar las dependencias del chart
+        run: |
+          helm dependency build ./P7/charts/sa-platform
+          ls -la ./P7/charts/sa-platform/charts/
+
       # Las credenciales se generan al vuelo con openssl: el clus'ter es
       # efimero y se destruye al terminar el job, de modo que no hay nada que
       # rotar ni ningun secreto que guardar en la configuracion del repositorio.
