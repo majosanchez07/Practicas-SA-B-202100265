@@ -11,6 +11,11 @@ Kubernetes, sin intervención manual.
 commit → versión → build → test → docker + push a GHCR → despliegue k8s → verificación
 ```
 
+**Estado: pipeline verde de punta a punta.** Ejecución #3 (commit `d65fdf3`):
+las seis etapas correctas en 4m 31s, con las 7 imágenes publicadas en GHCR y el
+despliegue en Kubernetes verificado en 2m 40s. Evidencia en
+[`docs/evidencias/`](docs/evidencias/).
+
 ---
 
 ## Contenido
