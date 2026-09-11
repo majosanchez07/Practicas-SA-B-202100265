@@ -420,6 +420,14 @@ jobs:
       # but missing in charts/ directory".
       - name: Descargar las dependencias del chart
         run: |
+          set -euo pipefail
+          # "helm dependency build" resuelve las versiones exactas del Chart.lock,
+          # pero exige que el repositorio de donde vienen este registrado
+          # localmente. Una maquina de trabajo suele tenerlo ya agregado; el
+          # runner arranca limpio y falla con "no repository definition for
+          # https://charts.bitnami.com/bitnami", asi que se registra aqui.
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
           helm dependency build ./P7/charts/sa-platform
           ls -la ./P7/charts/sa-platform/charts/
 
