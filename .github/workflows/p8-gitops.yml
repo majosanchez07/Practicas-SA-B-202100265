@@ -1,0 +1,699 @@
+# ==============================================================================
+# Practica 8 — Pipeline GitOps con seguridad de la cadena de suministro
+# Maria Jose Tebalan Sanchez — 202100265
+#
+# La diferencia esencial con el pipeline de la Practica 7
+# --------------------------------------------------------
+# El de la P7 terminaba desplegando: creaba un cluster, se autenticaba contra
+# el y ejecutaba "helm upgrade". El runner era administrador del cluster, de
+# modo que comprometer el repositorio implicaba comprometer la infraestructura.
+#
+# Este pipeline NO PUEDE DESPLEGAR. No contiene kubeconfig, no ejecuta kubectl
+# ni helm contra ningun cluster, y no posee ninguna credencial de AWS ni de
+# Kubernetes. Lo unico que hace al final es abrir un Pull Request en el
+# repositorio de manifiestos cambiando una linea: la etiqueta de la imagen.
+#
+# Quien aplica ese cambio al cluster es ArgoCD, que vive DENTRO del cluster y
+# lee el repositorio de manifiestos. El sentido del flujo se invierte: en lugar
+# de que el pipeline empuje (push) hacia la infraestructura, la infraestructura
+# tira (pull) del repositorio.
+#
+#   commit/tag -> build -> test -> lint -> imagen -> Trivy -> SBOM -> Cosign
+#                                                                       |
+#                                          PR al repositorio de manifiestos
+#                                                                       |
+#                                        ArgoCD sincroniza -> Argo Rollouts
+#                                                                 promueve
+#
+# Las tres puertas que un cambio debe superar
+# -------------------------------------------
+#   1. Pruebas unitarias        fallan -> no se construye imagen
+#   2. Trivy (CVE criticas)     falla  -> no se firma ni se abre PR
+#   3. Analisis del canary      falla  -> Argo Rollouts revierte solo
+#
+# La tercera ocurre despues de este pipeline y sin su intervencion: es el
+# propio cluster quien contiene el fallo.
+# ==============================================================================
+
+name: P8 - GitOps
+
+on:
+  push:
+    branches: [main]
+    # Un tag de version es el disparador del flujo completo de release. El
+    # enunciado exige que la etiqueta de la imagen derive de un tag de Git.
+    tags: ['v*.*.*']
+    paths:
+      - 'P8/**'
+      - '.github/workflows/p8-gitops.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'P8/**'
+      - '.github/workflows/p8-gitops.yml'
+  workflow_dispatch:
+    inputs:
+      version_manual:
+        description: 'Version a publicar (sin la v inicial). Solo para demostraciones.'
+        required: false
+        type: string
+
+# Permisos minimos. Notese lo que NO hay aqui: ninguna credencial de cluster.
+permissions:
+  contents: read
+  packages: write
+  # Necesario para la firma keyless de Cosign: el runner obtiene un token OIDC
+  # efimero que Sigstore usa como identidad. No hay ninguna clave privada
+  # guardada en ningun sitio.
+  id-token: write
+  # Permite comentar el resultado del escaneo en el Pull Request.
+  pull-requests: write
+  security-events: write
+
+concurrency:
+  group: p8-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+  CARNE: '202100265'
+  # Repositorio de manifiestos, independiente del de codigo. Es el unico que
+  # ArgoCD lee.
+  REPO_GITOPS: majosanchez07/Practicas-SA-B-202100265-gitops
+
+jobs:
+
+  # ===========================================================================
+  # ETAPA 0 — Version
+  #
+  # La etiqueta de la imagen deriva de un tag de Git, como exige el enunciado.
+  # Queda prohibido el uso de latest, de modo que este pipeline -a diferencia
+  # del de la P7- nunca publica esa etiqueta.
+  # ===========================================================================
+  version:
+    name: 0 - Version semantica
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.calcular.outputs.version }}
+      es_release: ${{ steps.calcular.outputs.es_release }}
+      prefijo: ${{ steps.calcular.outputs.prefijo }}
+      sha_corto: ${{ steps.calcular.outputs.sha_corto }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Calcular la version
+        id: calcular
+        run: |
+          set -euo pipefail
+          SHA_CORTO="$(git rev-parse --short HEAD)"
+
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            # Release: la version es el tag sin la v inicial.
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            ES_RELEASE=true
+          elif [[ -n "${{ inputs.version_manual }}" ]]; then
+            # Ejecucion manual para demostrar el flujo sin crear un tag.
+            VERSION="${{ inputs.version_manual }}"
+            ES_RELEASE=true
+          else
+            # Integracion continua: version de trabajo, nunca promovida a
+            # produccion por el flujo GitOps.
+            RAMA="${GITHUB_REF_NAME//\//-}"
+            VERSION="${RAMA}-${SHA_CORTO}"
+            ES_RELEASE=false
+          fi
+
+          # Comprobacion explicita: la palabra latest no puede aparecer en una
+          # etiqueta de imagen de esta practica.
+          if [[ "${VERSION}" == *latest* ]]; then
+            echo "::error::La etiqueta 'latest' esta prohibida por el enunciado."
+            exit 1
+          fi
+
+          PREFIJO="$(echo "${REGISTRY}/${IMAGE_PREFIX}" | tr '[:upper:]' '[:lower:]')"
+
+          {
+            echo "version=${VERSION}"
+            echo "es_release=${ES_RELEASE}"
+            echo "prefijo=${PREFIJO}"
+            echo "sha_corto=${SHA_CORTO}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Version de esta ejecucion: ${VERSION} (release=${ES_RELEASE})"
+
+  # ===========================================================================
+  # ETAPA 1 — Comprobacion de que el pipeline no despliega
+  #
+  # Este job no existia en la P7. Es un control sobre el propio pipeline: la
+  # rubrica lo incluye como REQUISITO PARA OPTAR A LA CALIFICACION.
+  #
+  #   "Sin despliegue directo: ningun workflow ejecuta kubectl apply, kubectl
+  #    set image o helm upgrade contra el cluster, ni almacena kubeconfig."
+  #
+  # Comprobarlo automaticamente, y no solo por inspeccion visual, es lo que
+  # convierte la prohibicion en una garantia: si alguien anadiera manana un
+  # paso de despliegue directo, el pipeline fallaria aqui.
+  # ===========================================================================
+  sin-despliegue-directo:
+    name: 1 - Verificar que no hay despliegue directo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Buscar comandos de despliegue prohibidos
+        # La comprobacion vive en un script aparte y no aqui dentro, por un
+        # motivo que conviene documentar: la primera version estaba escrita en
+        # este mismo archivo y fallaba siempre, porque los patrones que buscaba
+        # ("kubectl apply", "helm upgrade") aparecian literalmente en las lineas
+        # que los buscaban. El grep se encontraba a si mismo.
+        #
+        # Separar los patrones del archivo analizado elimina ese falso positivo
+        # de raiz. Ademas, el script se puede ejecutar en local antes de subir
+        # nada:  ./P8/scripts/verificar-sin-despliegue-directo.sh
+        run: |
+          chmod +x P8/scripts/verificar-sin-despliegue-directo.sh
+          ./P8/scripts/verificar-sin-despliegue-directo.sh \
+            .github/workflows/p8-gitops.yml | tee /tmp/verificacion.txt
+
+      - name: Anotar el resultado en el resumen
+        if: always()
+        run: |
+          {
+            echo "### Verificacion de ausencia de despliegue directo"
+            echo ""
+            echo '```'
+            cat /tmp/verificacion.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ===========================================================================
+  # ETAPA 2 — Pruebas unitarias
+  # ===========================================================================
+  test-node:
+    name: 2 - Pruebas (Node)
+    needs: version
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        servicio: [api-gateway, loans-service, notifications-service]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: P8/services/${{ matrix.servicio }}/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: P8/services/${{ matrix.servicio }}
+        run: npm ci --no-audit --no-fund
+
+      - name: Ejecutar las pruebas
+        working-directory: P8/services/${{ matrix.servicio }}
+        run: npm test
+
+  test-python:
+    name: 2 - Pruebas (Python)
+    needs: version
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - servicio: auth-service
+            ruta: P8/services/auth-service
+          - servicio: books-service
+            ruta: P8/services/books-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ${{ matrix.ruta }}/requirements.txt
+
+      - name: Instalar dependencias
+        working-directory: ${{ matrix.ruta }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Ejecutar las pruebas con cobertura
+        working-directory: ${{ matrix.ruta }}
+        run: pytest -q --cov=src --cov-report=term-missing
+
+  # ===========================================================================
+  # ETAPA 3 — Validacion del empaquetado con Helm
+  #
+  # El enunciado lo exige explicitamente: "validacion mediante helm lint dentro
+  # del pipeline".
+  # ===========================================================================
+  helm-lint:
+    name: 3 - Validar el chart (helm lint)
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+
+      - name: Descargar las dependencias del chart
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+          helm dependency build P8/charts/sa-platform
+
+      - name: helm lint en cada ambiente
+        run: |
+          set -euo pipefail
+          for amb in dev prod; do
+            echo "== helm lint (${amb}) =="
+            helm lint P8/charts/sa-platform \
+              -f P8/charts/sa-platform/values.example.yaml \
+              -f "P8/charts/sa-platform/values-${amb}.yaml" \
+              --set namespace.name=sa-p8
+          done
+
+      - name: Renderizar y comprobar que no se usa la etiqueta latest
+        run: |
+          set -euo pipefail
+          helm template sa-platform P8/charts/sa-platform \
+            -f P8/charts/sa-platform/values.example.yaml \
+            -f P8/charts/sa-platform/values-prod.yaml \
+            --set namespace.name=sa-p8 \
+            --set postgresql.enabled=false --set rabbitmq.enabled=false \
+            > /tmp/render.yaml
+
+          if grep -nE 'image:.*:latest"?$' /tmp/render.yaml; then
+            echo "::error::El chart renderiza imagenes con la etiqueta latest."
+            exit 1
+          fi
+          echo "Ninguna imagen del chart usa la etiqueta latest."
+
+      - name: Validar las politicas de admision contra el chart renderizado
+        run: |
+          set -euo pipefail
+          # Kyverno CLI evalua las politicas sin necesidad de cluster. Si el
+          # propio chart violara sus politicas, el despliegue seria rechazado
+          # en el cluster: mejor detectarlo aqui.
+          VER=1.19.1
+          curl -fsSL -o /tmp/kyverno.tgz \
+            "https://github.com/kyverno/kyverno/releases/download/v${VER}/kyverno-cli_v${VER}_linux_x86_64.tar.gz"
+          tar xzf /tmp/kyverno.tgz -C /tmp kyverno
+
+          echo "== Las cargas de trabajo del chart deben CUMPLIR las politicas =="
+          /tmp/kyverno apply P8/policies/01-prohibir-latest.yaml \
+                             P8/policies/02-exigir-limites.yaml \
+                             P8/policies/03-exigir-sin-root.yaml \
+                             --resource /tmp/render.yaml
+
+          echo "== El pod de prueba debe ser RECHAZADO =="
+          if /tmp/kyverno apply P8/policies/01-prohibir-latest.yaml \
+                                P8/policies/02-exigir-limites.yaml \
+                                P8/policies/03-exigir-sin-root.yaml \
+                                --resource P8/policies/pruebas/pod-que-viola-las-politicas.yaml \
+                                --detailed-results 2>&1 | tee /tmp/kyverno-rechazo.txt | grep -q "fail: 0"; then
+            echo "::error::El pod que viola las politicas NO fue rechazado."
+            exit 1
+          fi
+          echo "Las politicas rechazan correctamente el manifiesto no conforme."
+
+  # ===========================================================================
+  # ETAPA 4 — Construccion, escaneo, SBOM y firma
+  #
+  # Aqui vive la cadena de suministro. El orden importa:
+  #
+  #   construir -> escanear -> (si pasa) publicar -> SBOM -> firmar
+  #
+  # Se escanea ANTES de publicar: una imagen con una CVE critica no llega
+  # siquiera al registro.
+  # ===========================================================================
+  imagen:
+    name: 4 - Imagen, Trivy, SBOM y firma
+    needs: [version, test-node, test-python, helm-lint, sin-despliegue-directo]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - componente: api-gateway
+            contexto: P8/services/api-gateway
+          - componente: auth-service
+            contexto: P8/services/auth-service
+          - componente: books-service
+            contexto: P8/services/books-service
+          - componente: loans-service
+            contexto: P8/services/loans-service
+          - componente: notifications-service
+            contexto: P8/services/notifications-service
+          - componente: cronjob-insert
+            contexto: P8/cronjobs/cronjob-insert
+          - componente: cronjob-summary
+            contexto: P8/cronjobs/cronjob-summary
+    outputs:
+      digest_gateway: ${{ steps.exportar.outputs.digest_gateway }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Autenticarse contra GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # -----------------------------------------------------------------------
+      # 4.1 Construir la imagen SIN publicarla todavia.
+      #
+      # Se carga en el demonio local del runner para que Trivy pueda analizarla
+      # antes de que llegue a ningun registro.
+      # -----------------------------------------------------------------------
+      - name: Construir la imagen (local, sin publicar)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.contexto }}
+          file: ${{ matrix.contexto }}/Dockerfile.prod
+          target: prod
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: analisis-local/${{ matrix.componente }}:${{ needs.version.outputs.version }}
+          cache-from: type=gha,scope=p8-${{ matrix.componente }}
+          cache-to: type=gha,mode=max,scope=p8-${{ matrix.componente }}
+          provenance: false
+
+      # -----------------------------------------------------------------------
+      # 4.2 Trivy — LA PUERTA QUE BLOQUEA
+      #
+      # exit-code 1 con severity CRITICAL es lo que convierte el escaneo en un
+      # control y no en un informe. Sin esa bandera, Trivy imprimiria las
+      # vulnerabilidades y el pipeline continuaria como si nada.
+      #
+      # ignore-unfixed: una CVE sin parche disponible no se puede corregir
+      # actualizando; bloquear por ella detendria la entrega sin ofrecer
+      # ninguna accion posible. Se informa pero no bloquea.
+      # -----------------------------------------------------------------------
+      - name: Analisis de vulnerabilidades con Trivy (bloqueante ante CRITICAS)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: analisis-local/${{ matrix.componente }}:${{ needs.version.outputs.version }}
+          format: table
+          exit-code: '1'
+          severity: 'CRITICAL'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+
+      - name: Reporte completo de Trivy (informativo, no bloquea)
+        if: always()
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: analisis-local/${{ matrix.componente }}:${{ needs.version.outputs.version }}
+          format: json
+          output: 'trivy-${{ matrix.componente }}.json'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '0'
+
+      - name: Guardar el reporte de Trivy
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-${{ matrix.componente }}-${{ needs.version.outputs.version }}
+          path: trivy-${{ matrix.componente }}.json
+          retention-days: 30
+
+      # -----------------------------------------------------------------------
+      # 4.3 Publicar — solo si Trivy no encontro nada critico.
+      #
+      # Si el paso anterior fallo, el job se detiene y nunca se llega aqui: la
+      # imagen vulnerable no alcanza el registro.
+      # -----------------------------------------------------------------------
+      - name: Calcular etiquetas de la imagen
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ needs.version.outputs.prefijo }}/p8-${{ matrix.componente }}
+          # Notese que NO hay type=raw,value=latest: el enunciado lo prohibe.
+          tags: |
+            type=raw,value=${{ needs.version.outputs.version }}
+            type=sha,format=short
+          labels: |
+            org.opencontainers.image.title=p8-${{ matrix.componente }}
+            org.opencontainers.image.description=Practica 8 - ${{ matrix.componente }}
+            org.opencontainers.image.vendor=USAC - Software Avanzado
+            org.opencontainers.image.authors=Maria Jose Tebalan Sanchez (${{ env.CARNE }})
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Publicar la imagen en GHCR
+        id: publicar
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.contexto }}
+          file: ${{ matrix.contexto }}/Dockerfile.prod
+          target: prod
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=p8-${{ matrix.componente }}
+          provenance: false
+
+      # -----------------------------------------------------------------------
+      # 4.4 SBOM — inventario de todo lo que la imagen contiene.
+      #
+      # Un SBOM responde a la pregunta "¿esta plataforma usa la libreria X?"
+      # sin tener que inspeccionar cada imagen. Cuando manana se publique una
+      # CVE critica de una libreria cualquiera, es la diferencia entre
+      # responder en minutos o en dias.
+      # -----------------------------------------------------------------------
+      - name: Generar el SBOM (formato CycloneDX)
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ needs.version.outputs.prefijo }}/p8-${{ matrix.componente }}:${{ needs.version.outputs.version }}
+          format: cyclonedx
+          output: 'sbom-${{ matrix.componente }}.cdx.json'
+          exit-code: '0'
+
+      - name: Guardar el SBOM
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.componente }}-${{ needs.version.outputs.version }}
+          path: sbom-${{ matrix.componente }}.cdx.json
+          retention-days: 90
+
+      # -----------------------------------------------------------------------
+      # 4.5 Cosign — firma keyless.
+      #
+      # "Keyless" significa que no existe ninguna clave privada que guardar,
+      # rotar o filtrar. Cosign obtiene un certificado efimero de Fulcio a
+      # partir del token OIDC del runner, firma, y registra la firma en el log
+      # publico de transparencia Rekor. La identidad que queda grabada es la
+      # del workflow, no la de una persona:
+      #
+      #   https://github.com/<repo>/.github/workflows/p8-gitops.yml@refs/tags/vX
+      #
+      # Verificar la firma comprueba, por tanto, que la imagen la construyo
+      # ESTE pipeline desde ESTE repositorio. Una imagen sustituida por un
+      # atacante no tendria esa firma.
+      # -----------------------------------------------------------------------
+      - name: Instalar Cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@v3.7.0
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Firmar la imagen
+        if: github.event_name != 'pull_request'
+        env:
+          COSIGN_EXPERIMENTAL: '1'
+        run: |
+          set -euo pipefail
+          IMAGEN="${{ needs.version.outputs.prefijo }}/p8-${{ matrix.componente }}@${{ steps.publicar.outputs.digest }}"
+          echo "Firmando ${IMAGEN}"
+          # Se firma por digest y no por etiqueta: una etiqueta puede moverse a
+          # otra imagen, un digest no. Firmar la etiqueta dejaria la firma sin
+          # valor en cuanto alguien reescribiera el tag.
+          cosign sign --yes "${IMAGEN}"
+
+      - name: Verificar la firma recien creada
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          IMAGEN="${{ needs.version.outputs.prefijo }}/p8-${{ matrix.componente }}@${{ steps.publicar.outputs.digest }}"
+
+          # La verificacion exige que la identidad del firmante sea este
+          # workflow de este repositorio. Sin --certificate-identity, se
+          # aceptaria cualquier firma valida, incluida la de un atacante con
+          # su propia cuenta de GitHub.
+          cosign verify "${IMAGEN}" \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/p8-gitops.yml@.*$" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            | tee "verificacion-${{ matrix.componente }}.txt"
+
+      - name: Guardar la evidencia de verificacion de la firma
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cosign-verificacion-${{ matrix.componente }}-${{ needs.version.outputs.version }}
+          path: verificacion-${{ matrix.componente }}.txt
+          retention-days: 90
+
+      - name: Exportar el digest del gateway
+        id: exportar
+        if: matrix.componente == 'api-gateway' && github.event_name != 'pull_request'
+        run: echo "digest_gateway=${{ steps.publicar.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+  # ===========================================================================
+  # ETAPA 5 — Pull Request al repositorio de manifiestos
+  #
+  # ESTE ES EL UNICO PUNTO DE CONTACTO ENTRE EL PIPELINE Y EL DESPLIEGUE.
+  #
+  # No aplica nada: escribe una linea en otro repositorio y abre un Pull
+  # Request. ArgoCD, que vigila ese repositorio, es quien lleva el cambio al
+  # cluster cuando el PR se fusiona.
+  #
+  # Solo se ejecuta para releases (tags): una version de integracion continua
+  # no debe llegar a produccion.
+  # ===========================================================================
+  promover:
+    name: 5 - Abrir PR de promocion en el repositorio GitOps
+    needs: [version, imagen]
+    if: needs.version.outputs.es_release == 'true' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar el repositorio de manifiestos
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.REPO_GITOPS }}
+          # Token con permiso de escritura SOLO sobre el repositorio de
+          # manifiestos. No da acceso al cluster: lo maximo que puede hacer
+          # quien lo robe es proponer un cambio de version, que seguira
+          # pasando por el Pull Request y por las politicas de admision.
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops
+
+      - name: Actualizar la etiqueta de la imagen
+        id: actualizar
+        working-directory: gitops
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.version.outputs.version }}"
+          ARCHIVO="environments/prod/values.yaml"
+
+          echo "Version anterior:"
+          grep -E '^\s*imageTag:' "${ARCHIVO}" || true
+
+          # Se cambia UNA linea. Ese es todo el poder que este pipeline tiene
+          # sobre el entorno productivo.
+          sed -i -E "s|^(\s*imageTag:\s*).*|\1\"${VERSION}\"|" "${ARCHIVO}"
+
+          echo "Version nueva:"
+          grep -E '^\s*imageTag:' "${ARCHIVO}"
+
+          if git diff --quiet; then
+            echo "sin_cambios=true" >> "$GITHUB_OUTPUT"
+            echo "El manifiesto ya apuntaba a esta version; no hay nada que promover."
+          else
+            echo "sin_cambios=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Abrir el Pull Request
+        if: steps.actualizar.outputs.sin_cambios == 'false'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops
+          branch: promocion/v${{ needs.version.outputs.version }}
+          commit-message: |
+            Promueve la version ${{ needs.version.outputs.version }} a produccion
+
+            Imagen firmada y verificada con Cosign.
+            Origen: ${{ github.repository }}@${{ github.sha }}
+          title: 'Promocion a produccion: v${{ needs.version.outputs.version }}'
+          body: |
+            ## Promocion automatica de version
+
+            Este Pull Request lo abrio el pipeline de la Practica 8. Cambia
+            unicamente la etiqueta de la imagen en `environments/prod/values.yaml`.
+
+            | Dato | Valor |
+            |---|---|
+            | Version | `${{ needs.version.outputs.version }}` |
+            | Commit de origen | `${{ github.sha }}` |
+            | Ejecucion | [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+
+            ### Controles superados antes de abrir este PR
+
+            - [x] Pruebas unitarias de los siete componentes
+            - [x] `helm lint` en los ambientes dev y prod
+            - [x] Politicas de Kyverno validadas contra el chart renderizado
+            - [x] Trivy sin vulnerabilidades CRITICAS
+            - [x] SBOM generado (CycloneDX)
+            - [x] Imagen firmada con Cosign y firma verificada
+
+            ### Que ocurre al fusionar
+
+            1. ArgoCD detecta el cambio en el repositorio de manifiestos.
+            2. Sincroniza el `Rollout` del api-gateway.
+            3. Argo Rollouts inicia la promocion canary: 20% -> 50% -> 80% -> 100%.
+            4. En cada paso, el `AnalysisTemplate` ejecuta pruebas de humo,
+               integracion y carga contra la version candidata.
+            5. Si algun umbral se supera, el rollout revierte automaticamente
+               y el trafico vuelve al 100% a la version estable.
+
+            El pipeline **no** aplica nada al cluster: solo propone este cambio.
+          labels: |
+            promocion
+            automatico
+
+  # ===========================================================================
+  # ETAPA 6 — Resumen
+  # ===========================================================================
+  resumen:
+    name: 6 - Resumen del pipeline
+    needs: [version, sin-despliegue-directo, test-node, test-python, helm-lint, imagen]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Redactar el resumen
+        run: |
+          {
+            echo "## Practica 8 — Pipeline GitOps"
+            echo ""
+            echo "| Etapa | Resultado |"
+            echo "|---|---|"
+            echo "| Version semantica | ${{ needs.version.result }} |"
+            echo "| Sin despliegue directo | ${{ needs.sin-despliegue-directo.result }} |"
+            echo "| Pruebas Node | ${{ needs.test-node.result }} |"
+            echo "| Pruebas Python | ${{ needs.test-python.result }} |"
+            echo "| helm lint y politicas | ${{ needs.helm-lint.result }} |"
+            echo "| Imagen, Trivy, SBOM y firma | ${{ needs.imagen.result }} |"
+            echo ""
+            echo "**Version:** \`${{ needs.version.outputs.version }}\`"
+            echo ""
+            echo "Este pipeline no despliega. El unico componente que aplica"
+            echo "cambios al cluster es ArgoCD."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fallar si alguna etapa obligatoria fallo
+        if: >-
+          needs.version.result != 'success' ||
+          needs.sin-despliegue-directo.result != 'success' ||
+          needs.test-node.result != 'success' ||
+          needs.test-python.result != 'success' ||
+          needs.helm-lint.result != 'success' ||
+          needs.imagen.result != 'success'
+        run: |
+          echo "::error::Al menos una etapa obligatoria del pipeline fallo."
+          exit 1

@@ -1,0 +1,211 @@
+{{- /*
+================================================================================
+Rollouts de Argo — entrega progresiva
+
+Practica 8 — Maria Jose Tebalan Sanchez — 202100265
+
+Un Rollout es un Deployment con estrategia de promocion. Sustituye al
+Deployment para los servicios marcados con progressive.enabled, y el resto de
+la plataforma sigue usando Deployments normales (ver deployments.yaml, que
+excluye a los servicios gestionados aqui).
+
+Por que no todos los servicios
+------------------------------
+La entrega progresiva tiene un costo: durante la promocion conviven la version
+estable y la candidata, con el consumo de recursos que eso implica, y cada paso
+espera el resultado de un analisis. Aplicarla a los siete componentes
+multiplicaria el tiempo de despliegue sin aportar nada a la demostracion. Se
+aplica al api-gateway, que es la unica puerta de entrada del sistema: si una
+version defectuosa llega ahi, la afectacion es total, de modo que es
+precisamente el componente que mas justifica el mecanismo.
+
+Como funciona el canary de este chart
+-------------------------------------
+Argo Rollouts crea dos ReplicaSets y reparte el trafico entre ambos moviendo
+los endpoints de dos Services: uno "canary" que apunta a la version nueva y uno
+"stable" que apunta a la vigente. El Service ordinario del chart sigue
+existiendo y es el que consumen los demas servicios.
+
+Los pasos se definen en values (progressive.steps). Con la configuracion por
+defecto son cuatro pausas con analisis entre ellas:
+
+    20% -> analisis -> 50% -> analisis -> 80% -> analisis -> 100%
+
+Cada setWeight va seguido de una pausa cuya duracion da tiempo al
+AnalysisTemplate a recoger muestras. Si el analisis falla en cualquier paso, el
+Rollout aborta y devuelve el 100% del trafico a la version estable sin
+intervencion humana: esa es la reversion automatica que la practica exige
+demostrar.
+================================================================================
+*/ -}}
+{{- $root := . -}}
+{{- range $svc, $cfg := .Values.services }}
+{{- if and $cfg.enabled $cfg.progressive $cfg.progressive.enabled }}
+{{- $nombre := include "sa-platform.serviceName" (dict "root" $root "svc" $svc) }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ $nombre }}
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+    app.kubernetes.io/part-of: entrega-progresiva
+spec:
+  {{- if not $cfg.autoscaling.enabled }}
+  replicas: {{ $cfg.replicaCount | default 2 }}
+  {{- end }}
+
+  revisionHistoryLimit: 5
+
+  selector:
+    matchLabels:
+      {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $svc) | nindent 6 }}
+
+  strategy:
+    canary:
+      # Los dos Services que Argo Rollouts manipula para repartir el trafico.
+      # Los define services.yaml; aqui solo se referencian por nombre.
+      canaryService: {{ $nombre }}-canary
+      stableService: {{ $nombre }}-stable
+
+      # Analisis que acompana a TODA la promocion, en segundo plano. Arranca
+      # en el primer paso y se mantiene vivo mientras el rollout avanza: si en
+      # cualquier momento las metricas se degradan, aborta la promocion aunque
+      # el paso en curso sea una pausa.
+      analysis:
+        templates:
+          - templateName: {{ $nombre }}-analisis
+        args:
+          # El analisis necesita saber a que Service consultar. Se le pasa el
+          # canary para que mida SOLO la version nueva: medir el Service
+          # ordinario promediaria las dos versiones y diluiria el defecto
+          # justamente cuando el canary lleva poco trafico.
+          - name: servicio-canary
+            value: {{ $nombre }}-canary
+          - name: namespace
+            value: {{ $root.Values.namespace.name }}
+          - name: puerto
+            value: {{ $cfg.port | quote }}
+
+      steps:
+        {{- range $paso := $cfg.progressive.steps }}
+        {{- if hasKey $paso "setWeight" }}
+        - setWeight: {{ $paso.setWeight }}
+        {{- end }}
+        {{- if hasKey $paso "pause" }}
+        - pause:
+            {{- if $paso.pause.duration }}
+            duration: {{ $paso.pause.duration }}
+            {{- else }}
+            {}
+            {{- end }}
+        {{- end }}
+        {{- end }}
+
+  template:
+    metadata:
+      labels:
+        {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $svc) | nindent 8 }}
+        {{- if $cfg.usesBroker }}
+        sa-p5/broker-client: "true"
+        {{- end }}
+        {{- if $cfg.dbSchema }}
+        sa-p5/db-client: "true"
+        {{- end }}
+      annotations:
+        checksum/config: {{ include (print $root.Template.BasePath "/configmap.yaml") $root | sha256sum }}
+        checksum/secret: {{ include (print $root.Template.BasePath "/secret.yaml") $root | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "sa-platform.serviceAccountName" (dict "root" $root "svc" $svc) }}
+      automountServiceAccountToken: false
+
+      {{- with $root.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      securityContext:
+        {{- toYaml $root.Values.podSecurityContext | nindent 8 }}
+
+      terminationGracePeriodSeconds: 30
+
+      containers:
+        - name: {{ $svc }}
+          image: {{ include "sa-platform.image" (dict "root" $root "cfg" $cfg) | quote }}
+          imagePullPolicy: {{ $cfg.image.pullPolicy | default "IfNotPresent" }}
+
+          securityContext:
+            {{- toYaml $root.Values.securityContext | nindent 12 }}
+
+          ports:
+            - name: http
+              containerPort: {{ $cfg.port }}
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: {{ include "sa-platform.configMapName" $root }}
+            - secretRef:
+                name: {{ include "sa-platform.secretName" $root }}
+
+          env:
+            - name: PORT
+              value: {{ $cfg.port | quote }}
+            {{- if $cfg.dbSchema }}
+            - name: DB_SCHEMA
+              value: {{ $cfg.dbSchema | quote }}
+            {{- end }}
+            - name: SERVICE_NAME
+              value: {{ $svc | quote }}
+            {{- if $cfg.rootPath }}
+            - name: ROOT_PATH
+              value: {{ $cfg.rootPath | quote }}
+            {{- end }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+
+          startupProbe:
+            httpGet:
+              path: {{ $cfg.probes.startup.path }}
+              port: http
+            initialDelaySeconds: {{ $cfg.probes.startup.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ $cfg.probes.startup.periodSeconds | default 5 }}
+            timeoutSeconds: {{ $cfg.probes.startup.timeoutSeconds | default 3 }}
+            failureThreshold: {{ $cfg.probes.startup.failureThreshold | default 12 }}
+
+          livenessProbe:
+            httpGet:
+              path: {{ $cfg.probes.liveness.path }}
+              port: http
+            periodSeconds: {{ $cfg.probes.liveness.periodSeconds | default 15 }}
+            timeoutSeconds: {{ $cfg.probes.liveness.timeoutSeconds | default 3 }}
+            failureThreshold: {{ $cfg.probes.liveness.failureThreshold | default 3 }}
+
+          readinessProbe:
+            httpGet:
+              path: {{ $cfg.probes.readiness.path }}
+              port: http
+            periodSeconds: {{ $cfg.probes.readiness.periodSeconds | default 10 }}
+            timeoutSeconds: {{ $cfg.probes.readiness.timeoutSeconds | default 3 }}
+            failureThreshold: {{ $cfg.probes.readiness.failureThreshold | default 3 }}
+
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+
+          resources:
+            {{- toYaml $cfg.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}
+{{- end }}

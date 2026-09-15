@@ -1,0 +1,170 @@
+# ==============================================================================
+# Politica 3 de 3 — Exigir ejecucion sin privilegios de root
+#
+# Practica 8 — Maria Jose Tebalan Sanchez — 202100265
+#
+# El problema que resuelve
+# ------------------------
+# Un contenedor no es una maquina virtual. Comparte el kernel con el host y con
+# los demas contenedores del nodo; el aislamiento lo dan los namespaces y los
+# cgroups del kernel, no una frontera de hardware. En consecuencia, el root de
+# dentro del contenedor es, salvo que se acote, el mismo uid 0 del host: ante
+# una vulnerabilidad de escape, la diferencia entre "el atacante controla un
+# contenedor" y "el atacante controla el nodo" es exactamente esta politica.
+#
+# Las cuatro exigencias y por que hacen falta las cuatro
+# ------------------------------------------------------
+#   runAsNonRoot: true
+#       El kubelet rechaza el pod si la imagen declara uid 0. Es la
+#       comprobacion principal.
+#
+#   allowPrivilegeEscalation: false
+#       Impide que un proceso gane privilegios por encima de los de su padre
+#       via binarios setuid. Sin esto, un proceso no-root podria escalar a root
+#       DENTRO del contenedor aprovechando un binario setuid de la imagen, y la
+#       exigencia anterior quedaria burlada.
+#
+#   privileged: false
+#       Un contenedor privilegiado desactiva practicamente todo el aislamiento:
+#       ve los dispositivos del host y puede montar su sistema de archivos. No
+#       tiene sentido exigir no-root y permitir esto.
+#
+#   capabilities.drop: ALL
+#       Linux divide los poderes de root en capacidades. Docker concede un
+#       subconjunto por defecto que ninguna de estas aplicaciones necesita:
+#       ninguna abre puertos por debajo del 1024 ni manipula la red. Quitarlas
+#       todas es la lectura estricta del minimo privilegio.
+#
+# Ninguna de las cuatro sustituye a las otras: cada una cierra una via distinta.
+#
+# Sobre el alcance
+# ----------------
+# Se aplica al namespace sa-p8 y, deliberadamente, tambien a los pods que crea
+# el AnalysisTemplate del canary. Por eso esos Jobs declaran su propio
+# securityContext con runAsNonRoot y capabilities drop ALL: la politica no hace
+# excepciones con la propia infraestructura de pruebas.
+# ==============================================================================
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: exigir-ejecucion-sin-root
+  annotations:
+    policies.kyverno.io/title: Exigir ejecucion sin privilegios de root
+    policies.kyverno.io/category: Seguridad
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Los contenedores deben ejecutarse como usuario no privilegiado, sin
+      escalada de privilegios y sin capacidades de Linux. El root del
+      contenedor es el uid 0 del host: ante un escape, esta politica es la
+      diferencia entre comprometer un contenedor y comprometer el nodo.
+  labels:
+    practica: p8
+    carne: "202100265"
+spec:
+  validationFailureAction: Enforce
+  background: true
+
+  rules:
+    # --------------------------------------------------------------------------
+    # 1. Ejecucion como usuario no privilegiado.
+    #
+    # El anyPattern acepta dos formas validas de declararlo: a nivel de pod
+    # (securityContext.runAsNonRoot), que lo hereda todo contenedor, o a nivel
+    # de cada contenedor. Ambas son correctas y la politica no impone cual usar.
+    # --------------------------------------------------------------------------
+    - name: ejecutar-como-no-root
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - sa-p8
+      validate:
+        message: >-
+          Los contenedores deben ejecutarse como usuario no root. Declara
+          securityContext.runAsNonRoot=true a nivel de pod o de contenedor.
+          Ver P8/policies/03-exigir-sin-root.yaml
+        anyPattern:
+          - spec:
+              securityContext:
+                runAsNonRoot: true
+          - spec:
+              containers:
+                - securityContext:
+                    runAsNonRoot: true
+
+    # --------------------------------------------------------------------------
+    # 2. Sin escalada de privilegios.
+    #
+    # Se exige por contenedor: a diferencia de runAsNonRoot, este campo no
+    # existe a nivel de pod.
+    # --------------------------------------------------------------------------
+    - name: sin-escalada-de-privilegios
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - sa-p8
+      validate:
+        message: >-
+          Todo contenedor debe declarar
+          securityContext.allowPrivilegeEscalation=false. Sin esto, un proceso
+          no-root puede escalar a root dentro del contenedor mediante un
+          binario setuid.
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  allowPrivilegeEscalation: false
+
+    # --------------------------------------------------------------------------
+    # 3. Sin contenedores privilegiados.
+    # --------------------------------------------------------------------------
+    - name: sin-contenedores-privilegiados
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - sa-p8
+      validate:
+        message: >-
+          No se admiten contenedores privilegiados: desactivan el aislamiento
+          frente al host.
+        pattern:
+          spec:
+            =(containers):
+              - =(securityContext):
+                  =(privileged): "false"
+
+    # --------------------------------------------------------------------------
+    # 4. Sin capacidades de Linux.
+    #
+    # drop debe contener ALL. Se admite que luego se anada alguna capacidad
+    # concreta con add si una carga de trabajo la necesitara y se justificara;
+    # ninguna de las de esta plataforma lo hace.
+    # --------------------------------------------------------------------------
+    - name: eliminar-capacidades
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - sa-p8
+      validate:
+        message: >-
+          Todo contenedor debe eliminar todas las capacidades de Linux:
+          securityContext.capabilities.drop debe incluir ALL.
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL

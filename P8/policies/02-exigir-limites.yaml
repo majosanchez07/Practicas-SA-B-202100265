@@ -1,0 +1,119 @@
+# ==============================================================================
+# Politica 2 de 3 — Exigir limites de CPU y memoria
+#
+# Practica 8 — Maria Jose Tebalan Sanchez — 202100265
+#
+# El problema que resuelve
+# ------------------------
+# Un contenedor sin limite de memoria puede consumir toda la del nodo. Cuando
+# eso ocurre, el kernel invoca al OOM killer, que no distingue entre el proceso
+# culpable y los demas: mata a quien mas memoria ocupe en ese momento. Un solo
+# pod con una fuga de memoria puede, asi, tumbar servicios que no tienen nada
+# que ver con el.
+#
+# Con CPU el efecto es mas silencioso pero igual de danino: sin limite, un pod
+# en bucle consume todo el tiempo de CPU disponible y los demas contenedores
+# del nodo ven crecer su latencia sin que nada aparezca "caido". Justamente el
+# tipo de degradacion que la prueba de carga del canary busca detectar.
+#
+# Relacion con el LimitRange de Terraform
+# ---------------------------------------
+# El LimitRange (P8/terraform/platform/) tambien garantiza que todo contenedor
+# acabe con limites, pero lo hace de otra forma: los INYECTA silenciosamente
+# cuando faltan. Los dos mecanismos se complementan y ninguno sobra:
+#
+#   LimitRange  evita que el pod sea rechazado por la ResourceQuota, pero le
+#               asigna valores por defecto que probablemente no son los
+#               adecuados para esa carga de trabajo concreta.
+#   Esta        rechaza el manifiesto y obliga a que el autor declare valores
+#   politica    pensados para su servicio, dejando constancia de la omision.
+#
+# Es decir: el LimitRange es una red de seguridad; la politica es la que educa.
+# ==============================================================================
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: exigir-limites-de-recursos
+  annotations:
+    policies.kyverno.io/title: Exigir limites de CPU y memoria
+    policies.kyverno.io/category: Estabilidad
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Todo contenedor debe declarar requests y limits de CPU y memoria. Un
+      contenedor sin limite de memoria puede agotar la del nodo y provocar que
+      el OOM killer termine procesos ajenos al causante.
+  labels:
+    practica: p8
+    carne: "202100265"
+spec:
+  validationFailureAction: Enforce
+  background: true
+
+  rules:
+    # --------------------------------------------------------------------------
+    # Requests y limits, los cuatro valores.
+    #
+    # Se exigen los dos pares, no solo los limits, porque cumplen funciones
+    # distintas:
+    #
+    #   requests  es lo que el planificador reserva. Determina en que nodo cabe
+    #             el pod. Sin requests, Kubernetes asume 0 y puede colocar el
+    #             pod en un nodo que no tiene capacidad real para el.
+    #   limits    es el techo que el contenedor no puede superar. Es lo que
+    #             protege a los vecinos.
+    # --------------------------------------------------------------------------
+    - name: requests-y-limits-obligatorios
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - sa-p8
+      validate:
+        message: >-
+          Todo contenedor debe declarar resources.requests y resources.limits
+          de cpu y memory. Sin limite de memoria, un contenedor puede agotar la
+          del nodo y provocar que el OOM killer termine procesos ajenos.
+          Ver P8/policies/02-exigir-limites.yaml
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  requests:
+                    cpu: "?*"
+                    memory: "?*"
+                  limits:
+                    cpu: "?*"
+                    memory: "?*"
+
+    # --------------------------------------------------------------------------
+    # Lo mismo para los initContainers.
+    # --------------------------------------------------------------------------
+    - name: limites-en-initcontainers
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - sa-p8
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.initContainers[] || '' }}"
+            operator: NotEquals
+            value: ""
+      validate:
+        message: >-
+          Todo initContainer debe declarar requests y limits de cpu y memory.
+        pattern:
+          spec:
+            initContainers:
+              - resources:
+                  requests:
+                    cpu: "?*"
+                    memory: "?*"
+                  limits:
+                    cpu: "?*"
+                    memory: "?*"

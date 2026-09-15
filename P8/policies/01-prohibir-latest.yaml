@@ -1,0 +1,126 @@
+# ==============================================================================
+# Politica 1 de 3 — Prohibir la etiqueta latest
+#
+# Practica 8 — Maria Jose Tebalan Sanchez — 202100265
+#
+# El problema que resuelve
+# ------------------------
+# "latest" no es una version: es un puntero movil. Dos pods creados con el mismo
+# manifiesto en momentos distintos pueden ejecutar codigo diferente, y no hay
+# forma de saber cual. Eso rompe tres cosas a la vez:
+#
+#   - La trazabilidad: el manifiesto ya no describe que se esta ejecutando.
+#   - La reversion: volver a la "version anterior" no significa nada si la
+#     etiqueta anterior apunta ahora a otra imagen.
+#   - El canary: Argo Rollouts compara la imagen estable con la candidata para
+#     decidir si hay algo que promover. Con latest en ambas, no hay diferencia
+#     que detectar.
+#
+# Por que validate y no mutate
+# ----------------------------
+# Kyverno podria "arreglar" el manifiesto sustituyendo latest por un digest.
+# Aqui se rechaza a proposito: el objetivo no es que el despliegue funcione de
+# todos modos, sino que quede constancia de que alguien intento desplegar algo
+# no trazable. Una mutacion silenciosa oculta el problema; un rechazo lo
+# documenta.
+#
+# validationFailureAction: Enforce -> rechaza el recurso. En Audit solo lo
+# anotaria en un informe, y la practica exige demostrar un despliegue RECHAZADO.
+# ==============================================================================
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: prohibir-etiqueta-latest
+  annotations:
+    policies.kyverno.io/title: Prohibir la etiqueta latest
+    policies.kyverno.io/category: Trazabilidad
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Toda imagen debe declarar una etiqueta de version explicita. La etiqueta
+      latest es un puntero movil que impide saber que codigo se esta ejecutando
+      y hace imposible una reversion fiable.
+  labels:
+    practica: p8
+    carne: "202100265"
+spec:
+  validationFailureAction: Enforce
+  background: true
+
+  rules:
+    # --------------------------------------------------------------------------
+    # Regla 1: rechazar la etiqueta latest explicita.
+    # --------------------------------------------------------------------------
+    - name: sin-etiqueta-latest
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - sa-p8
+      validate:
+        message: >-
+          La imagen "{{ request.object.spec.containers[*].image }}" usa la etiqueta
+          latest. Toda imagen debe declarar una version explicita derivada de un
+          tag de Git (por ejemplo :1.0.0). Ver P8/policies/01-prohibir-latest.yaml
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"
+
+    # --------------------------------------------------------------------------
+    # Regla 2: rechazar la imagen SIN etiqueta.
+    #
+    # Escribir "nginx" a secas es equivalente a escribir "nginx:latest": Docker
+    # asume latest cuando no hay etiqueta. Sin esta regla, la politica anterior
+    # se esquivaria simplemente omitiendo los dos puntos.
+    #
+    # El patron exige que la imagen contenga ":" seguido de algo.
+    # --------------------------------------------------------------------------
+    - name: etiqueta-obligatoria
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - sa-p8
+      validate:
+        message: >-
+          La imagen no declara ninguna etiqueta, lo que equivale a usar latest.
+          Declara una version explicita, por ejemplo: registro/imagen:1.0.0
+        pattern:
+          spec:
+            containers:
+              - image: "*:*"
+
+    # --------------------------------------------------------------------------
+    # Regla 3: las mismas dos comprobaciones sobre los initContainers.
+    #
+    # Un initContainer ejecuta codigo con los mismos privilegios que el resto
+    # del pod antes de que arranquen los contenedores principales. Dejarlo
+    # fuera de la politica seria dejar abierta justamente la puerta que se
+    # pretende cerrar.
+    # --------------------------------------------------------------------------
+    - name: sin-latest-en-initcontainers
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - sa-p8
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.initContainers[] || '' }}"
+            operator: NotEquals
+            value: ""
+      validate:
+        message: >-
+          Un initContainer usa la etiqueta latest o no declara etiqueta.
+          Tambien los initContainers deben referenciar una version explicita.
+        pattern:
+          spec:
+            initContainers:
+              - image: "!*:latest"

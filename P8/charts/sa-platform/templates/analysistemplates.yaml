@@ -1,0 +1,254 @@
+{{- /*
+================================================================================
+AnalysisTemplate — la puerta de calidad del canary
+
+Practica 8 — Maria Jose Tebalan Sanchez — 202100265
+
+Este es el componente que convierte la promocion en una decision automatica en
+lugar de un avance ciego. Cada paso del Rollout espera su veredicto, y un fallo
+aborta la promocion y devuelve el trafico a la version estable.
+
+Por que pruebas activas y no metricas de Prometheus
+---------------------------------------------------
+Lo habitual en produccion es que el analisis consulte Prometheus por la tasa de
+error observada en el trafico real. Aqui se usan pruebas activas -Jobs que
+generan peticiones contra la version candidata- por una razon concreta: en el
+primer paso el canary recibe el 20% del trafico, y en una practica ese trafico
+no existe salvo que alguien lo genere. Un analisis basado en metricas pasivas
+no tendria muestras que evaluar y daria "exito" por ausencia de datos, que es
+la peor forma posible de aprobar un despliegue.
+
+Las tres metricas que deciden
+-----------------------------
+  1. prueba-de-humo    ¿responde y esta sano?          -> falla inmediata
+  2. prueba-integracion ¿los endpoints criticos sirven? -> falla inmediata
+  3. prueba-de-carga    ¿aguanta bajo concurrencia?     -> umbrales medidos
+
+Justificacion de los umbrales (la rubrica pide justificarlos):
+
+  Tasa de error < 1%
+      El sistema de la P5 a la P7 no tiene ninguna fuente conocida de error
+      intermitente: en condiciones normales la tasa observada es 0%. Un 1% no
+      es "poco error aceptable", es el margen para un reinicio de pod o un
+      corte de conexion puntual durante la ventana de medicion. Cualquier valor
+      por encima significa que la version candidata falla de forma sistematica.
+
+  p95 de latencia < 500 ms
+      Medido sobre el despliegue de la P5: el p95 del api-gateway con carga
+      moderada se situaba por debajo de 200 ms. El umbral se fija en 500 ms,
+      mas del doble, para que no salte por ruido del entorno compartido pero si
+      ante una regresion real de rendimiento -una consulta sin indice, una
+      llamada sincrona anadida, un bucle de reintentos-.
+
+  failureLimit: 0
+      Una sola ejecucion fallida aborta. No hay reintentos: si la version
+      candidata falla la prueba de humo, no va a dejar de fallarla porque se
+      intente de nuevo, y cada reintento es tiempo con trafico real llegando a
+      una version defectuosa.
+
+Sobre el contenedor que ejecuta las pruebas
+-------------------------------------------
+Se usa curlimages/curl, una imagen minima con shell y curl. No lleva latest:
+la politica de Kyverno de esta misma practica lo prohibe, y esa politica aplica
+tambien a los pods que crea el analisis.
+================================================================================
+*/ -}}
+{{- $root := . -}}
+{{- range $svc, $cfg := .Values.services }}
+{{- if and $cfg.enabled $cfg.progressive $cfg.progressive.enabled }}
+{{- $nombre := include "sa-platform.serviceName" (dict "root" $root "svc" $svc) }}
+{{- $umbrales := $cfg.progressive.thresholds | default $root.Values.progressiveDefaults.thresholds }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ $nombre }}-analisis
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+    app.kubernetes.io/component: analisis
+spec:
+  args:
+    - name: servicio-canary
+    - name: namespace
+    - name: puerto
+
+  metrics:
+    # -------------------------------------------------------------------------
+    # 1. Prueba de humo
+    #
+    # La comprobacion mas barata y la que mas rapido detecta un despliegue roto:
+    # ¿el servicio contesta y se declara sano? Se ejecuta en cada paso del
+    # rollout (count omitido = se repite mientras dure el analisis).
+    # -------------------------------------------------------------------------
+    - name: prueba-de-humo
+      interval: {{ $umbrales.intervalo | default "20s" }}
+      # Un solo fallo basta para abortar: ver la justificacion de la cabecera.
+      failureLimit: 0
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: humo
+                    image: {{ $root.Values.progressiveDefaults.testImage | quote }}
+                    command: [/bin/sh, -c]
+                    args:
+                      - |
+                        set -eu
+                        BASE="http://{{"{{args.servicio-canary}}"}}.{{"{{args.namespace}}"}}.svc.cluster.local:{{"{{args.puerto}}"}}"
+                        echo "Prueba de humo contra ${BASE}"
+
+                        # /health/live no toca la base de datos: responde a
+                        # "¿el proceso esta vivo?". Si esto falla, la imagen
+                        # esta rota de raiz.
+                        codigo=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "${BASE}/health/live")
+                        echo "  /health/live -> ${codigo}"
+                        [ "${codigo}" = "200" ] || { echo "FALLO: el servicio no esta vivo"; exit 1; }
+
+                        # /health/ready si verifica las dependencias. Un 200
+                        # aqui significa que la version candidata puede atender
+                        # trafico real, no solo que arranco.
+                        codigo=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "${BASE}/health/ready")
+                        echo "  /health/ready -> ${codigo}"
+                        [ "${codigo}" = "200" ] || { echo "FALLO: el servicio no esta listo"; exit 1; }
+
+                        echo "Prueba de humo superada"
+                    resources:
+                      requests: { cpu: 10m, memory: 32Mi }
+                      limits:   { cpu: 100m, memory: 64Mi }
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      runAsNonRoot: true
+                      runAsUser: 100
+                      capabilities:
+                        drop: ["ALL"]
+
+    # -------------------------------------------------------------------------
+    # 2. Prueba de integracion
+    #
+    # Comprueba los endpoints criticos del sistema, no solo que el proceso
+    # responda. Un servicio puede estar "sano" y devolver 500 en su ruta
+    # principal: eso es exactamente el defecto que se induce para demostrar la
+    # reversion automatica.
+    # -------------------------------------------------------------------------
+    - name: prueba-integracion
+      interval: {{ $umbrales.intervalo | default "20s" }}
+      failureLimit: 0
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: integracion
+                    image: {{ $root.Values.progressiveDefaults.testImage | quote }}
+                    command: [/bin/sh, -c]
+                    args:
+                      - |
+                        set -eu
+                        BASE="http://{{"{{args.servicio-canary}}"}}.{{"{{args.namespace}}"}}.svc.cluster.local:{{"{{args.puerto}}"}}"
+                        echo "Pruebas de integracion contra ${BASE}"
+                        fallos=0
+
+                        probar() {
+                          ruta="$1"; esperado="$2"
+                          codigo=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 "${BASE}${ruta}" || echo 000)
+                          if [ "${codigo}" = "${esperado}" ]; then
+                            echo "  OK   ${ruta} -> ${codigo}"
+                          else
+                            echo "  FALLA ${ruta} -> ${codigo} (se esperaba ${esperado})"
+                            fallos=$((fallos + 1))
+                          fi
+                        }
+
+                        {{- range $ruta := $cfg.progressive.criticalPaths | default (list "/health/ready") }}
+                        probar "{{ $ruta }}" "200"
+                        {{- end }}
+
+                        [ "${fallos}" -eq 0 ] || { echo "FALLO: ${fallos} endpoint(s) critico(s) no responden"; exit 1; }
+                        echo "Pruebas de integracion superadas"
+                    resources:
+                      requests: { cpu: 10m, memory: 32Mi }
+                      limits:   { cpu: 100m, memory: 64Mi }
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      runAsNonRoot: true
+                      runAsUser: 100
+                      capabilities:
+                        drop: ["ALL"]
+
+    # -------------------------------------------------------------------------
+    # 3. Prueba de carga
+    #
+    # Las dos anteriores hacen una peticion a la vez. Esta genera concurrencia
+    # y mide dos cosas que solo aparecen bajo carga: la tasa de error y la
+    # latencia p95. Una regresion de rendimiento -una consulta sin indice, por
+    # ejemplo- no se ve con una sola peticion, pero hunde el p95 en cuanto hay
+    # concurrencia.
+    #
+    # Se ejecuta con menos frecuencia que las otras dos porque cuesta mas.
+    # -------------------------------------------------------------------------
+    - name: prueba-de-carga
+      interval: {{ $umbrales.intervaloCarga | default "60s" }}
+      failureLimit: 0
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: carga
+                    image: {{ $root.Values.progressiveDefaults.loadTestImage | quote }}
+                    command: [/bin/sh, -c]
+                    args:
+                      - |
+                        set -eu
+                        BASE="http://{{"{{args.servicio-canary}}"}}.{{"{{args.namespace}}"}}.svc.cluster.local:{{"{{args.puerto}}"}}"
+
+                        cat > /tmp/carga.js <<'JS'
+                        import http from 'k6/http';
+                        import { check } from 'k6';
+
+                        export const options = {
+                          vus: {{ $umbrales.vus | default 5 }},
+                          duration: '{{ $umbrales.duracion | default "30s" }}',
+                          thresholds: {
+                            // Menos del 1% de peticiones fallidas.
+                            http_req_failed:   ['rate<{{ $umbrales.tasaErrorMaxima | default 0.01 }}'],
+                            // p95 por debajo del umbral en milisegundos.
+                            http_req_duration: ['p(95)<{{ $umbrales.latenciaP95Ms | default 500 }}'],
+                          },
+                        };
+
+                        export default function () {
+                          const res = http.get(`${__ENV.BASE}{{ $cfg.progressive.loadPath | default "/health/ready" }}`);
+                          check(res, { 'estado 200': (r) => r.status === 200 });
+                        }
+                        JS
+
+                        # k6 devuelve codigo 99 cuando un threshold no se cumple.
+                        # Ese codigo distinto de cero es lo que hace fallar el
+                        # Job y, con el, el analisis completo.
+                        BASE="${BASE}" k6 run --quiet /tmp/carga.js
+                    env:
+                      - name: BASE
+                        value: "http://{{"{{args.servicio-canary}}"}}.{{"{{args.namespace}}"}}.svc.cluster.local:{{"{{args.puerto}}"}}"
+                    resources:
+                      requests: { cpu: 100m, memory: 128Mi }
+                      limits:   { cpu: 500m, memory: 512Mi }
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      runAsNonRoot: true
+                      runAsUser: 12345
+                      capabilities:
+                        drop: ["ALL"]
+{{- end }}
+{{- end }}

@@ -173,3 +173,16 @@ venv/
 .coverage
 coverage.xml
 htmlcov/
+
+# ------------------------------------------------------------------------------
+# Practica 8 - Terraform
+# El estado contiene identificadores de la cuenta de AWS y, potencialmente,
+# valores sensibles de los recursos gestionados: nunca se versiona.
+# ------------------------------------------------------------------------------
+P8/terraform/**/.terraform/
+P8/terraform/**/.terraform.lock.hcl
+P8/terraform/**/terraform.tfstate
+P8/terraform/**/terraform.tfstate.*
+P8/terraform/**/*.tfvars
+!P8/terraform/**/*.tfvars.example
+P8/terraform/**/crash.log
