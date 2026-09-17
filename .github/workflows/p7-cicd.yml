@@ -19,11 +19,18 @@ name: P7 - CI/CD
 
 on:
   push:
+    # Aqui NO se declara "paths", y es una decision deliberada.
+    #
+    # GitHub Actions aplica el filtro de rutas comparando el rango de commits
+    # del push. Un push de tag no tiene ese rango, de modo que un bloque que
+    # declare "tags" junto a "paths" simplemente no dispara nada cuando llega un
+    # tag: el versionado semantico queda inoperante sin que nada lo advierta.
+    #
+    # El costo de quitarlo es que un commit en main que no toque P7 tambien
+    # lanza el pipeline. Es un precio menor comparado con que un tag de version
+    # no publique la release, que es justamente lo que debe funcionar siempre.
     branches: [main, develop]
-    tags: ['v*.*.*']          # un tag de version dispara el flujo de release
-    paths:                    # y solo cuando cambia algo de esta practica
-      - 'P7/**'
-      - '.github/workflows/p7-cicd.yml'
+    tags: ['v*.*.*']
   pull_request:
     branches: [main]
     paths:
