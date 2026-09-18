@@ -28,7 +28,16 @@ RUN python -m compileall -q .
 
 FROM python:3.12-slim AS prod
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Se aplican las actualizaciones de seguridad disponibles antes de instalar
+# nada mas. La imagen base oficial arrastra paquetes del sistema con
+# vulnerabilidades criticas ya corregidas aguas arriba -perl-base, entre
+# otros-, y el analisis de la cadena de suministro bloquea la construccion si
+# se dejan sin aplicar. Actualizar es la respuesta correcta aqui: la
+# correccion existe, de modo que excluir la vulnerabilidad no estaria
+# justificado.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
         libpq5 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
