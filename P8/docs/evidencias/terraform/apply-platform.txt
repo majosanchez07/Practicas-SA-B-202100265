@@ -1,0 +1,47 @@
+kubernetes_namespace.plataforma["sa-p8"]: Creating...
+kubernetes_namespace.plataforma["sealed-secrets"]: Creating...
+kubernetes_namespace.plataforma["argocd"]: Creating...
+kubernetes_namespace.plataforma["kyverno"]: Creating...
+kubernetes_namespace.plataforma["argocd"]: Creation complete after 0s [id=argocd]
+kubernetes_namespace.plataforma["sa-p8"]: Creation complete after 0s [id=sa-p8]
+kubernetes_namespace.plataforma["sealed-secrets"]: Creation complete after 0s [id=sealed-secrets]
+kubernetes_namespace.plataforma["kyverno"]: Creation complete after 0s [id=kyverno]
+kubernetes_limit_range.app: Creating...
+kubernetes_resource_quota.app: Creating...
+kubernetes_role.auditor: Creating...
+kubernetes_role.argocd_app: Creating...
+kubernetes_limit_range.app: Creation complete after 1s [id=sa-p8/sa-p8-limits]
+kubernetes_role.auditor: Creation complete after 1s [id=sa-p8/auditor-solo-lectura]
+kubernetes_role.argocd_app: Creation complete after 1s [id=sa-p8/argocd-gestor-aplicacion]
+kubernetes_role_binding.argocd_app: Creating...
+kubernetes_resource_quota.app: Creation complete after 1s [id=sa-p8/sa-p8-quota]
+kubernetes_role_binding.argocd_app: Creation complete after 0s [id=sa-p8/argocd-gestor-aplicacion]
+
+Apply complete! Resources: 9 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+comandos_verificacion = {
+  "cuota" = "kubectl describe resourcequota -n sa-p8"
+  "limites" = "kubectl describe limitrange -n sa-p8"
+  "namespaces" = "kubectl get namespaces -l gestionado-por=terraform"
+  "rbac" = "kubectl get roles,rolebindings -n sa-p8"
+}
+cuota_aplicada = tomap({
+  "limits.cpu" = "12"
+  "limits.memory" = "14Gi"
+  "persistentvolumeclaims" = "5"
+  "pods" = "60"
+  "requests.cpu" = "6"
+  "requests.memory" = "8Gi"
+})
+namespaces = tolist([
+  "argocd",
+  "kyverno",
+  "sa-p8",
+  "sealed-secrets",
+])
+roles_creados = [
+  "argocd-gestor-aplicacion",
+  "auditor-solo-lectura",
+]

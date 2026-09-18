@@ -1,0 +1,5 @@
+NAME             STATUS   AGE
+argocd           Active   10s
+kyverno          Active   10s
+sa-p8            Active   10s
+sealed-secrets   Active   10s

@@ -1,0 +1,63 @@
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Creating...
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still creating... [10s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still creating... [20s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still creating... [30s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still creating... [40s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still creating... [50s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still creating... [1m0s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still creating... [1m10s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Creation complete after 1m18s [id=sa-p8-202100265:workers-20260918050111880900000001]
+module.eks.aws_eks_addon.this["kube-proxy"]: Creating...
+module.eks.aws_eks_addon.this["coredns"]: Creating...
+module.eks.aws_eks_addon.this["vpc-cni"]: Creating...
+module.eks.aws_eks_addon.this["aws-ebs-csi-driver"]: Creating...
+module.eks.aws_eks_addon.this["coredns"]: Still creating... [10s elapsed]
+module.eks.aws_eks_addon.this["kube-proxy"]: Still creating... [10s elapsed]
+module.eks.aws_eks_addon.this["vpc-cni"]: Still creating... [10s elapsed]
+module.eks.aws_eks_addon.this["aws-ebs-csi-driver"]: Still creating... [10s elapsed]
+module.eks.aws_eks_addon.this["coredns"]: Still creating... [20s elapsed]
+module.eks.aws_eks_addon.this["vpc-cni"]: Still creating... [20s elapsed]
+module.eks.aws_eks_addon.this["kube-proxy"]: Still creating... [20s elapsed]
+module.eks.aws_eks_addon.this["aws-ebs-csi-driver"]: Still creating... [20s elapsed]
+module.eks.aws_eks_addon.this["kube-proxy"]: Creation complete after 25s [id=sa-p8-202100265:kube-proxy]
+module.eks.aws_eks_addon.this["aws-ebs-csi-driver"]: Still creating... [30s elapsed]
+module.eks.aws_eks_addon.this["coredns"]: Still creating... [30s elapsed]
+module.eks.aws_eks_addon.this["vpc-cni"]: Still creating... [30s elapsed]
+module.eks.aws_eks_addon.this["coredns"]: Creation complete after 36s [id=sa-p8-202100265:coredns]
+module.eks.aws_eks_addon.this["vpc-cni"]: Still creating... [40s elapsed]
+module.eks.aws_eks_addon.this["aws-ebs-csi-driver"]: Still creating... [40s elapsed]
+module.eks.aws_eks_addon.this["vpc-cni"]: Creation complete after 46s [id=sa-p8-202100265:vpc-cni]
+module.eks.aws_eks_addon.this["aws-ebs-csi-driver"]: Still creating... [50s elapsed]
+module.eks.aws_eks_addon.this["aws-ebs-csi-driver"]: Creation complete after 56s [id=sa-p8-202100265:aws-ebs-csi-driver]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0] (deposed object d64341b5): Destroying... [id=sa-p8-202100265:workers-20260918043219442200000015]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 10s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 20s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 30s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 40s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 50s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 1m0s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 1m10s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 1m20s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 1m30s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 1m40s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 1m50s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 2m0s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 2m10s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 2m20s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 2m30s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 2m40s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 2m50s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Still destroying... [id=sa-p8-202100265:workers-20260918043219442200000015, 3m0s elapsed]
+module.eks.module.eks_managed_node_group["workers"].aws_eks_node_group.this[0]: Destruction complete after 3m10s
+
+Apply complete! Resources: 5 added, 0 changed, 1 destroyed.
+
+Outputs:
+
+comando_kubeconfig = "aws eks update-kubeconfig --region us-east-2 --name sa-p8-202100265"
+endpoint = "https://605665382A6B46FB2A607B0E877D6402.gr7.us-east-2.eks.amazonaws.com"
+nombre_cluster = "sa-p8-202100265"
+oidc_provider_arn = "arn:aws:iam::949867896677:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/605665382A6B46FB2A607B0E877D6402"
+region = "us-east-2"
+version_kubernetes = "1.31"
+vpc_id = "vpc-0c9044451ac5ca112"

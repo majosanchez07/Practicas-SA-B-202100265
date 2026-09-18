@@ -1,0 +1,6 @@
+NAME                                                      CREATED AT
+role.rbac.authorization.k8s.io/argocd-gestor-aplicacion   2026-09-18T05:07:33Z
+role.rbac.authorization.k8s.io/auditor-solo-lectura       2026-09-18T05:07:33Z
+
+NAME                                                             ROLE                            AGE
+rolebinding.rbac.authorization.k8s.io/argocd-gestor-aplicacion   Role/argocd-gestor-aplicacion   14s

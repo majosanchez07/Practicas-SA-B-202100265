@@ -27,13 +27,32 @@ variable "tipo_nodo" {
   description = <<-DESC
     Tipo de instancia de los nodos trabajadores.
 
-    t3.small (2 GiB) fue suficiente en la Practica 6, pero la Practica 8 agrega
-    ArgoCD, Argo Rollouts, Kyverno y Sealed Secrets sobre la misma plataforma.
-    t3.medium (4 GiB) da el margen que esos componentes necesitan; con t3.small
-    los pods del sistema compiten por memoria con los de la aplicacion.
+    IMPORTANTE: la cuenta esta restringida a la capa gratuita y RECHAZA todo
+    tipo que no sea elegible. El error no es evidente: el grupo de nodos queda
+    en estado "CREATING" indefinidamente mientras el grupo de autoescalado
+    reintenta lanzar instancias que EC2 rechaza una y otra vez con
+    "The specified instance type is not eligible for Free Tier". Ni el grupo de
+    nodos ni Terraform reportan el fallo; hay que consultar el historial de
+    actividad del grupo de autoescalado para verlo.
+
+    El primer intento uso t3.medium y se perdieron 23 minutos asi.
+
+    Los tipos elegibles en us-east-2 se consultan con:
+      aws ec2 describe-instance-types --region us-east-2 \
+        --filters "Name=free-tier-eligible,Values=true" \
+        --query 'InstanceTypes[].{tipo:InstanceType,memoriaMiB:MemoryInfo.SizeInMiB}'
+
+    Se elige m7i-flex.large: es elegible y ofrece 8 GiB por nodo, el doble que
+    t3.medium. Con dos nodos son 16 GiB, holgado para la plataforma mas el
+    operador de despliegue, el controlador de promocion, el motor de admision y
+    el controlador de secretos.
+
+    La Practica 6 uso t3.small (2 GiB), que tambien es elegible pero se queda
+    corto aqui: aquella practica no desplegaba estos cuatro componentes
+    adicionales.
   DESC
   type        = string
-  default     = "t3.medium"
+  default     = "m7i-flex.large"
 }
 
 variable "nodos" {

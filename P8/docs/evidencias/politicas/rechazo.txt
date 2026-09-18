@@ -1,0 +1,37 @@
+================================================================
+ DESPLIEGUE RECHAZADO POR POLITICA DE ADMISION
+ Practica 8 - Maria Jose Tebalan Sanchez - 202100265
+ Fecha: 2026-09-17 23:13:04
+================================================================
+
+Politicas activas en el cluster:
+  NAME                         ADMISSION   BACKGROUND   READY   AGE   MESSAGE
+  exigir-ejecucion-sin-root    true        true         True    23s   Ready
+  exigir-limites-de-recursos   true        true         True    24s   Ready
+  prohibir-etiqueta-latest     true        true         True    25s   Ready
+
+Intento de crear un pod que incumple las tres:
+  $ kubectl apply -f P8/policies/pruebas/pod-que-viola-las-politicas.yaml
+
+  Error from server: error when creating "policies/pruebas/pod-que-viola-las-politicas.yaml": admission webhook "validate.kyverno.svc-fail" denied the request: 
+  
+  resource Pod/sa-p8/pod-violador was blocked due to the following policies 
+  
+  exigir-ejecucion-sin-root:
+    ejecutar-como-no-root: 'validation error: Los contenedores deben ejecutarse con
+      un usuario sin privilegios de administrador. rule ejecutar-como-no-root[0] failed
+      at path /spec/securityContext/runAsNonRoot/ rule ejecutar-como-no-root[1] failed
+      at path /spec/containers/0/securityContext/runAsNonRoot/'
+    eliminar-capacidades: 'validation error: Todo contenedor debe renunciar a las capacidades
+      del sistema. Ninguno de estos componentes necesita ninguna. rule eliminar-capacidades
+      failed at path /spec/containers/0/securityContext/capabilities/drop/'
+    sin-escalada-de-privilegios: 'validation error: Todo contenedor debe impedir la
+      escalada de privilegios. Sin esto, un proceso sin privilegios puede obtenerlos
+      mediante un binario del sistema. rule sin-escalada-de-privilegios failed at path
+      /spec/containers/0/securityContext/allowPrivilegeEscalation/'
+  prohibir-etiqueta-latest:
+    sin-etiqueta-movil: 'validation failure: La referencia al artefacto usa una etiqueta
+      movil. Debe indicar una version explicita derivada de una version publicada.'
+
+Comprobacion de que el objeto NO se creo:
+  Error from server (NotFound): pods "pod-violador" not found

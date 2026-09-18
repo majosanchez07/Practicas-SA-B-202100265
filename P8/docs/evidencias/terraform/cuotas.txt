@@ -1,0 +1,10 @@
+Name:                   sa-p8-quota
+Namespace:              sa-p8
+Resource                Used  Hard
+--------                ----  ----
+limits.cpu              0     12
+limits.memory           0     14Gi
+persistentvolumeclaims  0     5
+pods                    0     60
+requests.cpu            0     6
+requests.memory         0     8Gi

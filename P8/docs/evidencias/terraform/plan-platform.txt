@@ -1,0 +1,468 @@
+data.aws_eks_cluster_auth.este: Reading...
+data.aws_eks_cluster.este: Reading...
+data.aws_eks_cluster_auth.este: Read complete after 0s [id=sa-p8-202100265]
+data.aws_eks_cluster.este: Read complete after 0s [id=sa-p8-202100265]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # kubernetes_limit_range.app will be created
+  + resource "kubernetes_limit_range" "app" {
+      + id = (known after apply)
+
+      + metadata {
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/managed-by" = "terraform"
+              + "carne"                        = "202100265"
+              + "gestionado-por"               = "terraform"
+              + "practica"                     = "p8"
+            }
+          + name             = "sa-p8-limits"
+          + namespace        = "sa-p8"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+
+      + spec {
+          + limit {
+              + default         = {
+                  + "cpu"    = "300m"
+                  + "memory" = "256Mi"
+                }
+              + default_request = {
+                  + "cpu"    = "50m"
+                  + "memory" = "64Mi"
+                }
+              + max             = {
+                  + "cpu"    = "2"
+                  + "memory" = "2Gi"
+                }
+              + type            = "Container"
+            }
+        }
+    }
+
+  # kubernetes_namespace.plataforma["argocd"] will be created
+  + resource "kubernetes_namespace" "plataforma" {
+      + id                               = (known after apply)
+      + wait_for_default_service_account = false
+
+      + metadata {
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "gitops"
+              + "app.kubernetes.io/managed-by" = "terraform"
+              + "carne"                        = "202100265"
+              + "gestionado-por"               = "terraform"
+              + "practica"                     = "p8"
+            }
+          + name             = "argocd"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+    }
+
+  # kubernetes_namespace.plataforma["kyverno"] will be created
+  + resource "kubernetes_namespace" "plataforma" {
+      + id                               = (known after apply)
+      + wait_for_default_service_account = false
+
+      + metadata {
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "politicas"
+              + "app.kubernetes.io/managed-by" = "terraform"
+              + "carne"                        = "202100265"
+              + "gestionado-por"               = "terraform"
+              + "practica"                     = "p8"
+            }
+          + name             = "kyverno"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+    }
+
+  # kubernetes_namespace.plataforma["sa-p8"] will be created
+  + resource "kubernetes_namespace" "plataforma" {
+      + id                               = (known after apply)
+      + wait_for_default_service_account = false
+
+      + metadata {
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "aplicacion"
+              + "app.kubernetes.io/managed-by" = "terraform"
+              + "carne"                        = "202100265"
+              + "gestionado-por"               = "terraform"
+              + "nombre"                       = "sa-p8"
+              + "practica"                     = "p8"
+            }
+          + name             = "sa-p8"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+    }
+
+  # kubernetes_namespace.plataforma["sealed-secrets"] will be created
+  + resource "kubernetes_namespace" "plataforma" {
+      + id                               = (known after apply)
+      + wait_for_default_service_account = false
+
+      + metadata {
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "secretos"
+              + "app.kubernetes.io/managed-by" = "terraform"
+              + "carne"                        = "202100265"
+              + "gestionado-por"               = "terraform"
+              + "practica"                     = "p8"
+            }
+          + name             = "sealed-secrets"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+    }
+
+  # kubernetes_resource_quota.app will be created
+  + resource "kubernetes_resource_quota" "app" {
+      + id = (known after apply)
+
+      + metadata {
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/managed-by" = "terraform"
+              + "carne"                        = "202100265"
+              + "gestionado-por"               = "terraform"
+              + "practica"                     = "p8"
+            }
+          + name             = "sa-p8-quota"
+          + namespace        = "sa-p8"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+
+      + spec {
+          + hard = {
+              + "limits.cpu"             = "12"
+              + "limits.memory"          = "14Gi"
+              + "persistentvolumeclaims" = "5"
+              + "pods"                   = "60"
+              + "requests.cpu"           = "6"
+              + "requests.memory"        = "8Gi"
+            }
+        }
+    }
+
+  # kubernetes_role.argocd_app will be created
+  + resource "kubernetes_role" "argocd_app" {
+      + id = (known after apply)
+
+      + metadata {
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/managed-by" = "terraform"
+              + "carne"                        = "202100265"
+              + "gestionado-por"               = "terraform"
+              + "practica"                     = "p8"
+            }
+          + name             = "argocd-gestor-aplicacion"
+          + namespace        = "sa-p8"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+
+      + rule {
+          + api_groups = [
+              + null,
+            ]
+          + resources  = [
+              + "configmaps",
+              + "persistentvolumeclaims",
+              + "pods",
+              + "secrets",
+              + "serviceaccounts",
+              + "services",
+            ]
+          + verbs      = [
+              + "create",
+              + "delete",
+              + "get",
+              + "list",
+              + "patch",
+              + "update",
+              + "watch",
+            ]
+        }
+      + rule {
+          + api_groups = [
+              + "apps",
+            ]
+          + resources  = [
+              + "daemonsets",
+              + "deployments",
+              + "replicasets",
+              + "statefulsets",
+            ]
+          + verbs      = [
+              + "create",
+              + "delete",
+              + "get",
+              + "list",
+              + "patch",
+              + "update",
+              + "watch",
+            ]
+        }
+      + rule {
+          + api_groups = [
+              + "batch",
+            ]
+          + resources  = [
+              + "cronjobs",
+              + "jobs",
+            ]
+          + verbs      = [
+              + "create",
+              + "delete",
+              + "get",
+              + "list",
+              + "patch",
+              + "update",
+              + "watch",
+            ]
+        }
+      + rule {
+          + api_groups = [
+              + "argoproj.io",
+            ]
+          + resources  = [
+              + "analysisruns",
+              + "analysistemplates",
+              + "experiments",
+              + "rollouts",
+            ]
+          + verbs      = [
+              + "create",
+              + "delete",
+              + "get",
+              + "list",
+              + "patch",
+              + "update",
+              + "watch",
+            ]
+        }
+      + rule {
+          + api_groups = [
+              + "autoscaling",
+            ]
+          + resources  = [
+              + "horizontalpodautoscalers",
+            ]
+          + verbs      = [
+              + "create",
+              + "delete",
+              + "get",
+              + "list",
+              + "patch",
+              + "update",
+              + "watch",
+            ]
+        }
+      + rule {
+          + api_groups = [
+              + "networking.k8s.io",
+            ]
+          + resources  = [
+              + "ingresses",
+              + "networkpolicies",
+            ]
+          + verbs      = [
+              + "create",
+              + "delete",
+              + "get",
+              + "list",
+              + "patch",
+              + "update",
+              + "watch",
+            ]
+        }
+      + rule {
+          + api_groups = [
+              + "policy",
+            ]
+          + resources  = [
+              + "poddisruptionbudgets",
+            ]
+          + verbs      = [
+              + "create",
+              + "delete",
+              + "get",
+              + "list",
+              + "patch",
+              + "update",
+              + "watch",
+            ]
+        }
+      + rule {
+          + api_groups = [
+              + "bitnami.com",
+            ]
+          + resources  = [
+              + "sealedsecrets",
+            ]
+          + verbs      = [
+              + "create",
+              + "delete",
+              + "get",
+              + "list",
+              + "patch",
+              + "update",
+              + "watch",
+            ]
+        }
+    }
+
+  # kubernetes_role.auditor will be created
+  + resource "kubernetes_role" "auditor" {
+      + id = (known after apply)
+
+      + metadata {
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/managed-by" = "terraform"
+              + "carne"                        = "202100265"
+              + "gestionado-por"               = "terraform"
+              + "practica"                     = "p8"
+            }
+          + name             = "auditor-solo-lectura"
+          + namespace        = "sa-p8"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+
+      + rule {
+          + api_groups = [
+              + null,
+            ]
+          + resources  = [
+              + "configmaps",
+              + "events",
+              + "persistentvolumeclaims",
+              + "pods",
+              + "pods/log",
+              + "services",
+            ]
+          + verbs      = [
+              + "get",
+              + "list",
+              + "watch",
+            ]
+        }
+      + rule {
+          + api_groups = [
+              + "apps",
+            ]
+          + resources  = [
+              + "deployments",
+              + "replicasets",
+              + "statefulsets",
+            ]
+          + verbs      = [
+              + "get",
+              + "list",
+              + "watch",
+            ]
+        }
+      + rule {
+          + api_groups = [
+              + "argoproj.io",
+            ]
+          + resources  = [
+              + "analysisruns",
+              + "analysistemplates",
+              + "rollouts",
+            ]
+          + verbs      = [
+              + "get",
+              + "list",
+              + "watch",
+            ]
+        }
+    }
+
+  # kubernetes_role_binding.argocd_app will be created
+  + resource "kubernetes_role_binding" "argocd_app" {
+      + id = (known after apply)
+
+      + metadata {
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/managed-by" = "terraform"
+              + "carne"                        = "202100265"
+              + "gestionado-por"               = "terraform"
+              + "practica"                     = "p8"
+            }
+          + name             = "argocd-gestor-aplicacion"
+          + namespace        = "sa-p8"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+
+      + role_ref {
+          + api_group = "rbac.authorization.k8s.io"
+          + kind      = "Role"
+          + name      = "argocd-gestor-aplicacion"
+        }
+
+      + subject {
+          + api_group = (known after apply)
+          + kind      = "ServiceAccount"
+          + name      = "argocd-application-controller"
+          + namespace = "argocd"
+        }
+      + subject {
+          + api_group = (known after apply)
+          + kind      = "ServiceAccount"
+          + name      = "argocd-server"
+          + namespace = "argocd"
+        }
+    }
+
+Plan: 9 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + comandos_verificacion = {
+      + cuota      = "kubectl describe resourcequota -n sa-p8"
+      + limites    = "kubectl describe limitrange -n sa-p8"
+      + namespaces = "kubectl get namespaces -l gestionado-por=terraform"
+      + rbac       = "kubectl get roles,rolebindings -n sa-p8"
+    }
+  + cuota_aplicada        = {
+      + "limits.cpu"           = "12"
+      + "limits.memory"        = "14Gi"
+      + persistentvolumeclaims = "5"
+      + pods                   = "60"
+      + "requests.cpu"         = "6"
+      + "requests.memory"      = "8Gi"
+    }
+  + namespaces            = [
+      + "argocd",
+      + "kyverno",
+      + "sa-p8",
+      + "sealed-secrets",
+    ]
+  + roles_creados         = [
+      + "argocd-gestor-aplicacion",
+      + "auditor-solo-lectura",
+    ]
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to: plan.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "plan.tfplan"

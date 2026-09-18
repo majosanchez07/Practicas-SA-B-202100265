@@ -186,3 +186,4 @@ P8/terraform/**/terraform.tfstate.*
 P8/terraform/**/*.tfvars
 !P8/terraform/**/*.tfvars.example
 P8/terraform/**/crash.log
+P8/terraform/**/.terraform.tfstate.lock.info
