@@ -21,7 +21,20 @@ RUN npm run test --if-present
 
 RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 
-FROM node:20-alpine AS prod
+# ============================================================================
+# IMAGEN BASE DELIBERADAMENTE ANTIGUA - Practica 8
+#
+# Esta rama NO debe fusionarse. Existe para demostrar que el analisis de
+# seguridad bloquea una propuesta cuando el artefacto contiene vulnerabilidades
+# criticas conocidas.
+#
+# La version elegida se comprobo previamente: contiene dos vulnerabilidades
+# criticas con correccion disponible. No se eligio al azar ni se supuso.
+#
+# El analisis se ejecuta ANTES de publicar el artefacto, de modo que uno
+# vulnerable no llega siquiera al almacen.
+# ============================================================================
+FROM node:16.14.0-alpine3.14 AS prod
 
 RUN apk add --no-cache dumb-init
 
