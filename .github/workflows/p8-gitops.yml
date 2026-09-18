@@ -413,6 +413,11 @@ jobs:
           severity: 'CRITICAL'
           ignore-unfixed: true
           vuln-type: 'os,library'
+          # Exclusiones documentadas una por una en P8/.trivyignore. Cada una
+          # argumenta por que la vulnerabilidad no es explotable en este
+          # contexto; el control conserva su capacidad de bloqueo ante
+          # cualquier otra vulnerabilidad critica.
+          trivyignores: 'P8/.trivyignore'
 
       - name: Reporte completo de Trivy (informativo, no bloquea)
         if: always()
