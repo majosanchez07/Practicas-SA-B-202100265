@@ -1,0 +1,35 @@
+================================================================
+ VERIFICACION LOCAL DEL DEFECTO INDUCIDO
+ Practica 8 - Maria Jose Tebalan Sanchez - 202100265
+ Fecha: 2026-09-17 22:16:20
+================================================================
+
+Contexto: el componente expuesto se ejecuta aislado, sin los servicios
+internos ni sus dependencias. Por eso /health/ready responde 503 y las
+rutas hacia los demas servicios responden 502: no hay nada detras.
+
+Lo que esta verificacion demuestra es el CONTRASTE que motiva el defecto:
+
+  /health/live             HTTP 200
+     -> El proceso esta VIVO. Sus comprobaciones de vitalidad pasan y
+        la instancia figuraria como disponible.
+
+  /books/health/live       HTTP 500
+     -> La funcion real DEVUELVE ERROR. Ningun usuario puede usar el
+        catalogo, pese a que el componente se declara operativo.
+
+Cuerpo de la respuesta defectuosa:
+     {
+         "error": "Fallo inducido para la demostracion de reversion automatica",
+         "practica": "P8",
+         "version": "desconocida"
+     }
+
+================================================================
+ CONCLUSION
+================================================================
+Un analisis que solo comprobara disponibilidad daria por buena esta
+version y la promoveria a la totalidad de los usuarios.
+
+Por eso el analisis progresivo ejecuta tambien pruebas de funcionalidad:
+son las unicas que detectan este defecto.

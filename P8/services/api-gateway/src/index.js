@@ -78,6 +78,35 @@ app.get('/health', (req, res) => {
 
 app.use('/auth', crearProxy(AUTH_SERVICE_URL, '/auth', 'Auth service'));
 
+// ============================================================================
+// DEFECTO INDUCIDO DELIBERADAMENTE - Practica 8
+//
+// Este bloque NO debe llegar a la rama principal. Existe unicamente para
+// demostrar que el analisis progresivo detecta una version defectuosa y la
+// revierte sin intervencion humana.
+//
+// Por que ESTE defecto y no otro
+// ------------------------------
+// Se eligio uno que es invisible para las comprobaciones de disponibilidad: el
+// proceso arranca, responde a /health/live y /health/ready, y su instancia
+// figura como disponible y lista para recibir trafico. Solo falla al ejecutar
+// la funcion real del sistema.
+//
+// Un defecto evidente -que el proceso no arranque, por ejemplo- seria detenido
+// por las comprobaciones de arranque ANTES de recibir trafico, y no demostraria
+// nada sobre el analisis progresivo: la contencion habria ocurrido antes.
+//
+// El manejador se declara antes del proxy real para interceptar las peticiones
+// antes de que lleguen a el.
+// ============================================================================
+app.use('/books', (req, res) => {
+  res.status(500).json({
+    error: 'Fallo inducido para la demostracion de reversion automatica',
+    practica: 'P8',
+    version: process.env.APP_VERSION || 'desconocida'
+  });
+});
+
 app.use('/books', crearProxy(BOOKS_SERVICE_URL, '/books', 'Books service'));
 
 app.use('/loans', crearProxy(LOANS_SERVICE_URL, '/loans', 'Loans service'));
