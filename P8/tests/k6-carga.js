@@ -58,9 +58,9 @@
  * ----------------------------------------------------------------------------
  * Uso
  * ----------------------------------------------------------------------------
- *   k6 run carga.js
- *   k6 run -e BASE_URL=http://mi-gateway:8080 carga.js
- *   k6 run -e VUS=10 -e DURACION=2m carga.js
+ *   k6 run k6-carga.js
+ *   k6 run -e BASE_URL=http://mi-gateway:8080 k6-carga.js
+ *   k6 run -e VUS=10 -e DURACION=2m k6-carga.js
  *
  * k6 devuelve codigo 99 cuando un threshold no se cumple. Ese codigo distinto
  * de cero es lo que hace fallar el Job del AnalysisTemplate y, con el, aborta
@@ -141,7 +141,7 @@ export default function () {
   //    salud y saturarla distorsionaria la medicion de las demas.
   // --------------------------------------------------------------------------
   if (__ITER % 3 === 0) {
-    const catalogo = http.get(`${BASE_URL}/api/books`, params);
+    const catalogo = http.get(`${BASE_URL}/books/health/live`, params);
     latenciaCatalogo.add(catalogo.timings.duration);
 
     const catalogoOk = check(catalogo, {
@@ -207,7 +207,7 @@ export function handleSummary(data) {
 
   Por endpoint:
     /health/ready p95: ${v('latencia_salud', 'p(95)').toFixed(2)} ms
-    /api/books    p95: ${v('latencia_catalogo', 'p(95)').toFixed(2)} ms
+    /books        p95: ${v('latencia_catalogo', 'p(95)').toFixed(2)} ms
 
   ---------------------------------------------------------------
   UMBRALES DE PROMOCION

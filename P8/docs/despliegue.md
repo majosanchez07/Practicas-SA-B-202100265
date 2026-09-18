@@ -306,7 +306,7 @@ kubectl port-forward svc/sa-platform-api-gateway -n sa-p8 8080:8080 &
 cd P8/tests
 BASE_URL=http://localhost:8080 ./humo.sh        | tee ../docs/evidencias/pruebas/humo.txt
 BASE_URL=http://localhost:8080 ./integracion.sh | tee ../docs/evidencias/pruebas/integracion.txt
-k6 run -e BASE_URL=http://localhost:8080 carga.js
+k6 run -e BASE_URL=http://localhost:8080 k6-carga.js
 mv reporte-carga.* ../docs/evidencias/carga/
 ```
 

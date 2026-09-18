@@ -163,10 +163,14 @@ services:
 
       # Endpoints que la prueba de integracion verifica en cada paso. Son los
       # que el fallo inducido rompe deliberadamente para demostrar la reversion.
+      # Rutas verificadas contra el codigo del gateway (src/index.js):
+      # el gateway monta /books como proxy hacia el servicio de catalogo.
+      # La ruta /api/books NO existe: usarla haria fallar el analisis siempre,
+      # y la reversion se dispararia por un 404 en lugar de por el defecto.
       criticalPaths:
         - /health/live
         - /health/ready
-        - /api/books
+        - /books/health/live
 
       # Ruta que recibe la prueba de carga.
       loadPath: /health/ready

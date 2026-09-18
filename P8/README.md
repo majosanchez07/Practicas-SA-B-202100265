@@ -29,6 +29,8 @@ Software Avanzado B — Universidad de San Carlos de Guatemala
 | [Diagrama del flujo](docs/diagrama-flujo.md) | Recorrido completo con actores y puntos de validación |
 | [Informe de incidente](docs/informe-incidente.md) | Análisis del fallo inducido |
 | [Preguntas teóricas](docs/preguntas-teoricas.md) | Análisis de la implementación entregada |
+| [Manual de demostraciones](docs/manual-demostraciones.md) | Procedimiento paso a paso de las cuatro demostraciones |
+| [Guía de despliegue](docs/despliegue.md) | Procedimiento operativo completo |
 
 ---
 

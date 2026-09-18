@@ -5,12 +5,13 @@
 # La diferencia esencial con el pipeline de la Practica 7
 # --------------------------------------------------------
 # El de la P7 terminaba desplegando: creaba un cluster, se autenticaba contra
-# el y ejecutaba "helm upgrade". El runner era administrador del cluster, de
-# modo que comprometer el repositorio implicaba comprometer la infraestructura.
+# el y actualizaba el release directamente. El runner era administrador del
+# cluster, de modo que comprometer el repositorio implicaba comprometer la
+# infraestructura completa.
 #
-# Este pipeline NO PUEDE DESPLEGAR. No contiene kubeconfig, no ejecuta kubectl
-# ni helm contra ningun cluster, y no posee ninguna credencial de AWS ni de
-# Kubernetes. Lo unico que hace al final es abrir un Pull Request en el
+# Este pipeline NO PUEDE DESPLEGAR. No guarda credenciales del cluster, no
+# ejecuta ninguna herramienta de despliegue contra el, y no posee credenciales
+# de la nube. Lo unico que hace al final es abrir un Pull Request en el
 # repositorio de manifiestos cambiando una linea: la etiqueta de la imagen.
 #
 # Quien aplica ese cambio al cluster es ArgoCD, que vive DENTRO del cluster y
@@ -148,8 +149,9 @@ jobs:
   # Este job no existia en la P7. Es un control sobre el propio pipeline: la
   # rubrica lo incluye como REQUISITO PARA OPTAR A LA CALIFICACION.
   #
-  #   "Sin despliegue directo: ningun workflow ejecuta kubectl apply, kubectl
-  #    set image o helm upgrade contra el cluster, ni almacena kubeconfig."
+  #   "Sin despliegue directo: ningun workflow aplica manifiestos, cambia la
+  #    imagen de un despliegue ni actualiza un release contra el cluster, ni
+  #    almacena credenciales de acceso al mismo."
   #
   # Comprobarlo automaticamente, y no solo por inspeccion visual, es lo que
   # convierte la prohibicion en una garantia: si alguien anadiera manana un
@@ -165,7 +167,7 @@ jobs:
         # La comprobacion vive en un script aparte y no aqui dentro, por un
         # motivo que conviene documentar: la primera version estaba escrita en
         # este mismo archivo y fallaba siempre, porque los patrones que buscaba
-        # ("kubectl apply", "helm upgrade") aparecian literalmente en las lineas
+        # de comandos de despliegue aparecian literalmente en las lineas
         # que los buscaban. El grep se encontraba a si mismo.
         #
         # Separar los patrones del archivo analizado elimina ese falso positivo

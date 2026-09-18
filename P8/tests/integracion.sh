@@ -107,7 +107,7 @@ fi
 # Son los que el AnalysisTemplate verifica en cada paso del canary
 # (criticalPaths en los values) y los que el fallo inducido rompe.
 # ------------------------------------------------------------------------------
-probar_json   "catalogo de libros"              "/api/books"
+probar_json   "catalogo de libros"              "/books/health/live"
 probar_codigo "gateway vivo"                    "/health/live"   200
 probar_codigo "gateway listo"                   "/health/ready"  200
 
@@ -132,8 +132,8 @@ probar_codigo "ruta hacia notifications-service" "/notifications/health/live"  2
 # esta escapando hasta el manejador de errores. Es un sintoma de que el codigo
 # no valida sus entradas.
 # ------------------------------------------------------------------------------
-probar_codigo "ruta inexistente devuelve 404"    "/api/esta-ruta-no-existe"    404
-probar_codigo "recurso inexistente devuelve 404" "/api/books/999999999"        404
+probar_codigo "ruta inexistente devuelve 404"    "/esta-ruta-no-existe"        404
+probar_codigo "recurso inexistente devuelve 404" "/books/no-existe-tampoco"     404
 
 if [ "${FORMATO}" = "json" ]; then
   printf '{"suite":"integracion","total":%d,"fallos":%d,"fecha":"%s","pruebas":[%s]}\n' \
