@@ -36,6 +36,7 @@ traducciones.
 | [Preguntas teóricas](docs/preguntas-teoricas.md) | Análisis de la implementación entregada |
 | [Manual de demostraciones](docs/manual-demostraciones.md) | Procedimiento paso a paso de las cuatro demostraciones |
 | [Guía de despliegue](docs/despliegue.md) | Procedimiento operativo completo |
+| [Guion del video](docs/guion-video.md) | Guion y minutaje de la demostración |
 
 ---
 
