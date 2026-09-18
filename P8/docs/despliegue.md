@@ -122,10 +122,10 @@ kubectl rollout status deployment/kyverno-admission-controller -n kyverno --time
 ### 3.4 Gestión de credenciales cifradas
 
 ```bash
-helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
+helm repo add sealed-secrets https://bitnami.github.io/sealed-secrets
 helm repo update
 helm install sealed-secrets sealed-secrets/sealed-secrets \
-  --namespace sealed-secrets --version 2.16.1 \
+  --namespace sealed-secrets --version 2.20.0 \
   --set fullnameOverride=sealed-secrets-controller
 kubectl rollout status deployment/sealed-secrets-controller -n sealed-secrets --timeout=300s
 ```

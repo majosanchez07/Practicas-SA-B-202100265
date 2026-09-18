@@ -7,16 +7,21 @@ Software Avanzado B — Universidad de San Carlos de Guatemala
 
 ## Tabla de enlaces
 
-| Ítem | Enlace o dato |
+Los nombres de los ítems son los de la sección 4.1 del enunciado, sin
+modificar: esta tabla es el único documento que se utiliza para localizar la
+evidencia, de modo que debe poder recorrerse contra el enunciado sin
+traducciones.
+
+| Ítem | Enlace o dato requerido |
 |---|---|
-| Repositorio de declaración | https://github.com/majosanchez07/Practicas-SA-B-202100265-gitops |
-| Aplicación gestionada | Nombre: `sa-platform` — Espacio de trabajo: `argocd` |
-| Ejecución exitosa de la automatización | _(pendiente: se completa tras la primera ejecución)_ |
+| Repositorio GitOps | https://github.com/majosanchez07/Practicas-SA-B-202100265-gitops |
+| Aplicación en ArgoCD | Aplicación: `sa-platform` — Namespace: `argocd` |
+| Ejecución exitosa del pipeline | _(pendiente)_ |
 | Reversión automática | _(pendiente)_ |
-| Despliegue rechazado por norma | _(pendiente)_ |
+| Despliegue rechazado por política | _(pendiente)_ |
 | Bloqueo por vulnerabilidad crítica | _(pendiente)_ |
-| Artefacto firmado | `ghcr.io/majosanchez07/practicas-sa-b-202100265/p8-api-gateway:1.0.0` |
-| Reporte de prueba de rendimiento | [docs/evidencias/carga/reporte-carga.txt](docs/evidencias/carga/reporte-carga.txt) _(pendiente)_ |
+| Imagen firmada | `ghcr.io/majosanchez07/practicas-sa-b-202100265/p8-api-gateway:1.0.0` |
+| Reporte de prueba de carga | [P8/docs/evidencias/carga/reporte-carga.txt](docs/evidencias/carga/reporte-carga.txt) _(pendiente)_ |
 | Video demostrativo | _(pendiente)_ |
 
 ---
