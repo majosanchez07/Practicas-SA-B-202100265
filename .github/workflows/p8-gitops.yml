@@ -405,7 +405,7 @@ jobs:
       # ninguna accion posible. Se informa pero no bloquea.
       # -----------------------------------------------------------------------
       - name: Analisis de vulnerabilidades con Trivy (bloqueante ante CRITICAS)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: analisis-local/${{ matrix.componente }}:${{ needs.version.outputs.version }}
           format: table
@@ -416,7 +416,7 @@ jobs:
 
       - name: Reporte completo de Trivy (informativo, no bloquea)
         if: always()
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: analisis-local/${{ matrix.componente }}:${{ needs.version.outputs.version }}
           format: json
@@ -479,7 +479,7 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Generar el SBOM (formato CycloneDX)
         if: github.event_name != 'pull_request'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: ${{ needs.version.outputs.prefijo }}/p8-${{ matrix.componente }}:${{ needs.version.outputs.version }}
           format: cyclonedx
