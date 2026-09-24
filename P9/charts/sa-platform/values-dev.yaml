@@ -1,0 +1,114 @@
+# ==============================================================================
+# values-dev.yaml — Ambiente de desarrollo
+#
+# Uso:
+#   helm upgrade --install sa-platform ./charts/sa-platform \
+#     -f ./charts/sa-platform/values-dev.yaml \
+#     --set postgresql.auth.password=... --set rabbitmq.auth.password=...
+#
+# Diferencias frente a produccion: menos replicas, recursos mas holgados en
+# proporcion al tamano del cluster local, imagenes con tag de desarrollo y
+# registro de log detallado para poder depurar.
+# ==============================================================================
+
+global:
+  # Tag comun a todos los microservicios en este ambiente.
+  imageTag: "v2"
+
+config:
+  # Nivel de log: en desarrollo interesa ver el detalle de cada consulta.
+  logLevel: debug
+  environment: development
+  corsOrigins: "*"
+
+# Menos replicas: el cluster local no da para dos de cada servicio en reposo.
+services:
+  api-gateway:
+    replicaCount: 1
+    image:
+      tag: "v1"
+    resources:
+      requests: { cpu: 25m, memory: 48Mi }
+      limits: { cpu: 200m, memory: 192Mi }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+
+  auth-service:
+    replicaCount: 1
+    image:
+      tag: "v1"
+    resources:
+      requests: { cpu: 25m, memory: 96Mi }
+      limits: { cpu: 200m, memory: 256Mi }
+    autoscaling:
+      enabled: false
+
+  books-service:
+    replicaCount: 1
+    image:
+      tag: "v1"
+    resources:
+      requests: { cpu: 25m, memory: 96Mi }
+      limits: { cpu: 200m, memory: 256Mi }
+    autoscaling:
+      enabled: false
+
+  loans-service:
+    replicaCount: 1
+    image:
+      tag: "v2"
+    resources:
+      requests: { cpu: 25m, memory: 64Mi }
+      limits: { cpu: 200m, memory: 192Mi }
+    autoscaling:
+      enabled: false
+
+  notifications-service:
+    replicaCount: 1
+    image:
+      tag: "v2"
+    resources:
+      requests: { cpu: 25m, memory: 64Mi }
+      limits: { cpu: 200m, memory: 192Mi }
+    autoscaling:
+      enabled: false
+
+cronjobs:
+  insert:
+    image:
+      tag: "v1"
+  summary:
+    image:
+      tag: "v1"
+
+ingress:
+  host: sa-p5.local
+
+# Cuotas reducidas, acordes a un cluster local de 4 CPU y 6 GB.
+resourceQuota:
+  enabled: true
+  hard:
+    requests.cpu: "3"
+    requests.memory: 4Gi
+    limits.cpu: "6"
+    limits.memory: 8Gi
+    pods: "30"
+    persistentvolumeclaims: "5"
+
+postgresql:
+  primary:
+    persistence:
+      size: 1Gi
+    resources:
+      requests: { cpu: 100m, memory: 192Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+
+rabbitmq:
+  persistence:
+    size: 1Gi
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 500m, memory: 640Mi }

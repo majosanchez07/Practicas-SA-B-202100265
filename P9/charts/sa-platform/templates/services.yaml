@@ -1,0 +1,73 @@
+{{- /*
+================================================================================
+Services de los microservicios.
+
+Todos son de tipo ClusterIP, sin excepcion: el enunciado prohibe exponer los
+microservicios, la base de datos y el broker con NodePort o LoadBalancer. La
+unica puerta de entrada al cluster es el Ingress que apunta al API Gateway.
+================================================================================
+*/ -}}
+{{- $root := . -}}
+{{- range $svc, $cfg := .Values.services }}
+{{- if $cfg.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" $svc) }}
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ $cfg.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+
+{{- /*
+================================================================================
+Practica 8 — Services auxiliares del canary
+
+Argo Rollouts reparte el trafico entre la version estable y la candidata
+reescribiendo el selector de estos dos Services: les agrega la etiqueta
+rollouts-pod-template-hash del ReplicaSet correspondiente. Por eso aqui se
+declaran con el selector base, sin esa etiqueta; es el controlador quien la
+inyecta.
+
+  -canary  apunta a la version candidata. Es el que consulta el
+           AnalysisTemplate, para medir SOLO la version nueva.
+  -stable  apunta a la version vigente. Recibe el trafico devuelto si la
+           promocion se aborta.
+
+El Service ordinario de arriba sigue existiendo sin cambios: es el que usan los
+demas microservicios y el Ingress, y no debe distinguir entre versiones.
+================================================================================
+*/}}
+{{- if and $cfg.progressive $cfg.progressive.enabled }}
+{{- range $variante := list "canary" "stable" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" $svc) }}-{{ $variante }}
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+    app.kubernetes.io/component: rollout-{{ $variante }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ $cfg.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

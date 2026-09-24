@@ -187,3 +187,13 @@ P8/terraform/**/*.tfvars
 !P8/terraform/**/*.tfvars.example
 P8/terraform/**/crash.log
 P8/terraform/**/.terraform.tfstate.lock.info
+
+# Practica 9 - Terraform (el estado vive en S3; nada local se versiona)
+P9/terraform/**/.terraform/
+P9/terraform/**/terraform.tfstate
+P9/terraform/**/terraform.tfstate.*
+P9/terraform/**/*.tfplan
+P9/terraform/**/*.tfvars
+P9/terraform/**/crash.log
+P9/terraform/**/.terraform.tfstate.lock.info
+P9/charts/**/charts/*.tgz

@@ -1,0 +1,56 @@
+{{- /*
+================================================================================
+Service de tipo LoadBalancer — punto de entrada publico (requisito 4 de la P6).
+
+En la practica anterior la unica puerta de entrada era un Ingress nginx con el
+host ficticio sa-p5.local, resuelto localmente en /etc/hosts. Eso funciona en un
+clúster local pero no da una direccion alcanzable desde internet.
+
+Aqui se declara un Service de tipo LoadBalancer sobre el API Gateway. El
+cloud-controller-manager que EKS ejecuta dentro del plano de control observa
+este objeto, solicita a la API de AWS la creacion de un Network Load Balancer
+real, y escribe su nombre DNS publico de vuelta en status.loadBalancer.ingress.
+Esa es la direccion que se documenta como evidencia de acceso publico.
+
+Se mantiene el principio de la P5: sigue habiendo una unica puerta de entrada.
+Los demas microservicios, la base de datos y el broker conservan su ClusterIP y
+no son alcanzables desde fuera del clúster.
+
+Este objeto es adicional al Service ClusterIP del gateway, no lo reemplaza: el
+trafico interno entre microservicios sigue resolviendose por el nombre corto de
+Kubernetes sin salir a la red de AWS.
+================================================================================
+*/ -}}
+{{- if .Values.loadBalancer.enabled }}
+{{- $svc := .Values.loadBalancer.service }}
+{{- $cfg := index .Values.services $svc }}
+{{- if not $cfg }}
+{{- fail (printf "loadBalancer.service apunta a '%s', que no existe en .Values.services" $svc) }}
+{{- end }}
+{{- if not $cfg.enabled }}
+{{- fail (printf "loadBalancer.service apunta a '%s', que esta deshabilitado" $svc) }}
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "sa-platform.serviceName" (dict "root" . "svc" $svc) }}-public
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" . "svc" $svc) | nindent 4 }}
+    sa-platform.io/role: public-entrypoint
+  {{- with .Values.loadBalancer.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: LoadBalancer
+  ports:
+    # El puerto 80 publico se traduce al puerto interno del gateway, de modo que
+    # la URL de evidencia no necesita indicar puerto.
+    - port: {{ .Values.loadBalancer.port | default 80 }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "sa-platform.serviceSelectorLabels" (dict "root" . "svc" $svc) | nindent 4 }}
+{{- end }}

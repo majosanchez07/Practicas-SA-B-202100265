@@ -1,0 +1,553 @@
+# ==============================================================================
+# values.yaml — Valores base de la plataforma
+#
+# Este archivo contiene la configuracion comun a todos los ambientes. Los
+# archivos values-dev.yaml y values-prod.yaml lo sobrescriben con el numero de
+# replicas, los limites de recursos, el tag de la imagen y el nivel de log de
+# cada ambiente.
+#
+# IMPORTANTE: aqui no hay contrasenas reales. Los campos sensibles quedan vacios
+# a proposito y se inyectan al instalar con --set o con un values propio no
+# versionado. Ver values.example.yaml.
+# ==============================================================================
+
+# Valores globales: los subcharts los heredan automaticamente.
+global:
+  imageRegistry: ""
+  imageTag: ""
+  carne: "202100265"
+  security:
+    # Los charts de Bitnami rechazan por defecto cualquier imagen que no sea la
+    # suya oficial. Aqui se sustituye a proposito por la del repositorio
+    # bitnamilegacy: en 2025 Bitnami traslado sus imagenes con tag a un catalogo
+    # de pago y las referencias por defecto del chart ya no se pueden descargar,
+    # de modo que sin esta sustitucion los pods quedarian en ImagePullBackOff.
+    # bitnamilegacy conserva exactamente las mismas imagenes publicadas antes
+    # del cambio.
+    allowInsecureImages: true
+
+carne: "202100265"
+
+# ------------------------------------------------------------------------------
+# Credenciales para descargar imagenes de un registro privado.
+# Vacio por defecto: en kind con imagenes precargadas, o con imagenes publicas,
+# no hace falta ninguna. El pipeline de la P7 lo informa con --set porque las
+# imagenes que publica en GHCR desde un repositorio privado nacen privadas.
+# ------------------------------------------------------------------------------
+imagePullSecrets: []
+
+# Registro del que se descargan los SIETE componentes propios (5 microservicios
+# y 2 cronjobs). A diferencia de global.imageRegistry, este valor no lo heredan
+# los subcharts de Bitnami: ver la nota en el helper sa-platform.image.
+# Vacio por defecto: en kind las imagenes se precargan con "kind load".
+imageRegistry: ""
+
+nameOverride: ""
+fullnameOverride: ""
+
+# ------------------------------------------------------------------------------
+# Namespace
+# El enunciado exige que lo cree el propio chart y no kubectl.
+# ------------------------------------------------------------------------------
+namespace:
+  # En false por defecto: el namespace se crea con --create-namespace al
+  # instalar, porque Helm necesita que exista antes de registrar el release.
+  # La definicion completa del namespace vive en templates/namespace.yaml, con
+  # la explicacion detallada del porque. Poner en true cuando el release se
+  # instale sobre un namespace ya existente.
+  create: false
+  name: sa-p5
+
+# ------------------------------------------------------------------------------
+# Configuracion no sensible -> ConfigMap generado por el chart
+# ------------------------------------------------------------------------------
+config:
+  logLevel: info
+  environment: development
+  corsOrigins: "*"
+  # Nombres logicos del broker, compartidos por productores y consumidores.
+  broker:
+    exchange: biblioteca.events
+    queue: notifications.queue
+    routingKeyLoan: loan.created
+    routingKeyResumen: resumen.generado
+  jwt:
+    algorithm: HS256
+    expirationMinutes: 30
+    gracePeriodMinutes: 5
+
+# ==============================================================================
+# Origen de las credenciales
+#
+# false (por defecto en la Practica 8): el chart NO genera el Secret. Las
+#       credenciales llegan cifradas al repositorio de declaracion y las
+#       descifra el controlador de secretos dentro del cluster. Ningun valor
+#       sensible se escribe en ningun repositorio.
+#
+# true: el chart genera el Secret a partir de los values de abajo. Solo para
+#       instalar fuera del flujo declarativo -por ejemplo en un entorno local-,
+#       donde los values no se publican en ningun sitio.
+#
+# Ver la explicacion completa en templates/secret.yaml.
+# ==============================================================================
+secretsFromValues:
+  enabled: false
+
+# ------------------------------------------------------------------------------
+# Configuracion sensible -> Secret generado por el chart
+# Estos campos quedan vacios en el repositorio a proposito. El chart los valida
+# con "required", de modo que la instalacion se detiene con un mensaje claro si
+# no se informan al instalar. Ver values.example.yaml.
+# ------------------------------------------------------------------------------
+secrets:
+  jwtSecretKey: ""
+  aesSecretKey: ""
+
+# ------------------------------------------------------------------------------
+# Microservicios
+# El chart recorre este mapa con range: agregar un servicio aqui genera su
+# Deployment, Service, HPA, PDB, ServiceAccount, Role y RoleBinding sin escribir
+# una sola plantilla nueva.
+# ------------------------------------------------------------------------------
+services:
+  api-gateway:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: sa-p5/api-gateway
+      tag: ""
+      pullPolicy: IfNotPresent
+    port: 8080
+    # Unico servicio expuesto por el Ingress: es la puerta de entrada.
+    isGateway: true
+    dbSchema: ""
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits: { cpu: 300m, memory: 256Mi }
+    probes:
+      startup: { path: /health/live, initialDelaySeconds: 5, periodSeconds: 5, failureThreshold: 12 }
+      liveness: { path: /health/live, initialDelaySeconds: 0, periodSeconds: 15, timeoutSeconds: 3, failureThreshold: 3 }
+      readiness: { path: /health/ready, initialDelaySeconds: 0, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      enabled: true
+      minAvailable: 1
+    # --------------------------------------------------------------------------
+    # Practica 8 — Entrega progresiva
+    #
+    # El api-gateway es el unico servicio con canary: es la puerta de entrada
+    # del sistema, de modo que una version defectuosa aqui afecta al 100% de
+    # los usuarios. Es el componente que mas justifica el mecanismo, y aplicarlo
+    # a los siete multiplicaria el tiempo de despliegue sin aportar nada a la
+    # demostracion.
+    # --------------------------------------------------------------------------
+    progressive:
+      enabled: true
+
+      # Cuatro pasos de promocion; el enunciado exige al menos tres.
+      # Entre cada setWeight y el siguiente hay una pausa que da tiempo al
+      # AnalysisTemplate a ejecutar sus pruebas contra la version candidata.
+      steps:
+        - setWeight: 20
+        - pause: { duration: 60s }
+        - setWeight: 50
+        - pause: { duration: 60s }
+        - setWeight: 80
+        - pause: { duration: 60s }
+        # Sin un setWeight 100 final: al terminar los pasos, Argo Rollouts
+        # promueve el canary a estable por si mismo.
+
+      # Endpoints que la prueba de integracion verifica en cada paso. Son los
+      # que el fallo inducido rompe deliberadamente para demostrar la reversion.
+      # Rutas verificadas contra el codigo del gateway (src/index.js):
+      # el gateway monta /books como proxy hacia el servicio de catalogo.
+      # La ruta /api/books NO existe: usarla haria fallar el analisis siempre,
+      # y la reversion se dispararia por un 404 en lugar de por el defecto.
+      criticalPaths:
+        - /health/live
+        - /health/ready
+        - /books/health/live
+
+      # Ruta que recibe la prueba de carga.
+      loadPath: /health/ready
+
+  auth-service:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: sa-p5/auth-service
+      tag: ""
+      pullPolicy: IfNotPresent
+    port: 8000
+    isGateway: false
+    dbSchema: auth
+    # Prefijo publico bajo el que el gateway expone el servicio; FastAPI lo
+    # usa como root_path para generar bien los enlaces de /docs.
+    rootPath: /auth
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { cpu: 300m, memory: 384Mi }
+    probes:
+      startup: { path: /health/live, initialDelaySeconds: 5, periodSeconds: 5, failureThreshold: 24 }
+      liveness: { path: /health/live, initialDelaySeconds: 0, periodSeconds: 15, timeoutSeconds: 3, failureThreshold: 3 }
+      readiness: { path: /health/ready, initialDelaySeconds: 0, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      enabled: true
+      minAvailable: 1
+
+  books-service:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: sa-p5/books-service
+      tag: ""
+      pullPolicy: IfNotPresent
+    port: 8001
+    isGateway: false
+    dbSchema: books
+    # Prefijo publico bajo el que el gateway expone el servicio; FastAPI lo
+    # usa como root_path para generar bien los enlaces de /docs.
+    rootPath: /books
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { cpu: 300m, memory: 384Mi }
+    probes:
+      startup: { path: /health/live, initialDelaySeconds: 5, periodSeconds: 5, failureThreshold: 24 }
+      liveness: { path: /health/live, initialDelaySeconds: 0, periodSeconds: 15, timeoutSeconds: 3, failureThreshold: 3 }
+      readiness: { path: /health/ready, initialDelaySeconds: 0, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      enabled: true
+      minAvailable: 1
+
+  loans-service:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: sa-p5/loans-service
+      tag: ""
+      pullPolicy: IfNotPresent
+    port: 8002
+    isGateway: false
+    dbSchema: loans
+    # Publica eventos en el broker: las NetworkPolicies le permiten alcanzarlo.
+    usesBroker: true
+    resources:
+      requests: { cpu: 50m, memory: 96Mi }
+      limits: { cpu: 300m, memory: 256Mi }
+    probes:
+      startup: { path: /health/live, initialDelaySeconds: 5, periodSeconds: 5, failureThreshold: 18 }
+      liveness: { path: /health/live, initialDelaySeconds: 0, periodSeconds: 15, timeoutSeconds: 3, failureThreshold: 3 }
+      readiness: { path: /health/ready, initialDelaySeconds: 0, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      enabled: true
+      minAvailable: 1
+
+  notifications-service:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: sa-p5/notifications-service
+      tag: ""
+      pullPolicy: IfNotPresent
+    port: 8003
+    isGateway: false
+    dbSchema: notifications
+    # Consume del broker.
+    usesBroker: true
+    resources:
+      requests: { cpu: 50m, memory: 96Mi }
+      limits: { cpu: 300m, memory: 256Mi }
+    probes:
+      startup: { path: /health/live, initialDelaySeconds: 5, periodSeconds: 5, failureThreshold: 18 }
+      liveness: { path: /health/live, initialDelaySeconds: 0, periodSeconds: 15, timeoutSeconds: 3, failureThreshold: 3 }
+      readiness: { path: /health/ready, initialDelaySeconds: 0, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      enabled: true
+      minAvailable: 1
+
+# ------------------------------------------------------------------------------
+# Estrategia de actualizacion
+# maxUnavailable: 0 obliga a que el pod nuevo este listo antes de retirar el
+# viejo, que es lo que permite actualizar sin caida de servicio.
+# ------------------------------------------------------------------------------
+updateStrategy:
+  maxUnavailable: 0
+  maxSurge: 1
+
+# ------------------------------------------------------------------------------
+# securityContext restrictivo exigido por el enunciado
+# ------------------------------------------------------------------------------
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+podSecurityContext:
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+# ------------------------------------------------------------------------------
+# Cronjobs encadenados
+# ------------------------------------------------------------------------------
+cronjobs:
+  insert:
+    enabled: true
+    schedule: "*/2 * * * *"
+    image:
+      repository: sa-p5/cronjob-insert
+      tag: ""
+      pullPolicy: IfNotPresent
+    dbSchema: cronjobs
+    concurrencyPolicy: Forbid
+    backoffLimit: 2
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 3
+    resources:
+      requests: { cpu: 25m, memory: 64Mi }
+      limits: { cpu: 200m, memory: 128Mi }
+
+  summary:
+    enabled: true
+    schedule: "*/10 * * * *"
+    image:
+      repository: sa-p5/cronjob-summary
+      tag: ""
+      pullPolicy: IfNotPresent
+    dbSchema: cronjobs
+    timezoneReporte: America/Guatemala
+    concurrencyPolicy: Forbid
+    backoffLimit: 2
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 3
+    resources:
+      requests: { cpu: 25m, memory: 64Mi }
+      limits: { cpu: 200m, memory: 128Mi }
+
+# ------------------------------------------------------------------------------
+# Ingress — unica puerta de entrada al cluster
+# ------------------------------------------------------------------------------
+ingress:
+  enabled: true
+  className: nginx
+  host: sa-p5.local
+  path: /
+  pathType: Prefix
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+
+# ------------------------------------------------------------------------------
+# LoadBalancer — punto de entrada publico
+# Desactivado por defecto: en un cluster local no hay proveedor que lo resuelva
+# y el Service quedaria en <pending> indefinidamente. Se activa en values-eks.yaml.
+# ------------------------------------------------------------------------------
+loadBalancer:
+  enabled: false
+  service: api-gateway
+  port: 80
+  annotations: {}
+
+# ------------------------------------------------------------------------------
+# NetworkPolicies — aislamiento de trafico lateral
+# ------------------------------------------------------------------------------
+networkPolicies:
+  enabled: true
+  # Deniega todo por defecto y luego se abren solo los caminos necesarios.
+  defaultDeny: true
+
+# ------------------------------------------------------------------------------
+# Cuotas del namespace
+# ------------------------------------------------------------------------------
+# ==============================================================================
+# ResourceQuota y LimitRange
+#
+# PRACTICA 8: APAGADOS A PROPOSITO.
+#
+# El enunciado exige que las cuotas, los limites y el RBAC se definan y apliquen
+# con Terraform (ver P8/terraform/platform/). Si ademas los declarara este
+# chart, Terraform y ArgoCD reclamarian los mismos objetos y la aplicacion
+# oscilaria entre Synced y OutOfSync sin estabilizarse nunca. Como el requisito
+# de calificacion exige que este Synced y Healthy, cada objeto tiene un unico
+# dueno:
+#
+#   Terraform -> namespace, ResourceQuota, LimitRange, RBAC
+#   ArgoCD    -> cargas de trabajo (Rollout, Service, ConfigMap, HPA...)
+#
+# Las plantillas siguen en el chart y se pueden renderizar poniendo enabled en
+# true, de modo que el empaquetado sigue siendo completo y reutilizable fuera
+# de esta practica.
+# ==============================================================================
+resourceQuota:
+  enabled: false
+  hard:
+    requests.cpu: "4"
+    requests.memory: 6Gi
+    limits.cpu: "8"
+    limits.memory: 10Gi
+    pods: "40"
+    persistentvolumeclaims: "5"
+
+limitRange:
+  enabled: false
+  default:
+    cpu: 300m
+    memory: 256Mi
+  defaultRequest:
+    cpu: 50m
+    memory: 64Mi
+  max:
+    cpu: "2"
+    memory: 2Gi
+
+# ==============================================================================
+# Entrega progresiva — valores compartidos
+#
+# Los umbrales de aqui son el criterio de promocion o reversion. La rubrica
+# pide justificarlos, y la justificacion completa esta en la cabecera de
+# templates/analysistemplates.yaml. En resumen:
+#
+#   tasaErrorMaxima 1%   El sistema no tiene fuentes conocidas de error
+#                        intermitente: en condiciones normales la tasa es 0%.
+#                        El 1% es margen para un reinicio de pod puntual, no
+#                        tolerancia a fallo sistematico.
+#
+#   latenciaP95Ms 500    El p95 medido en la P5 estaba por debajo de 200 ms.
+#                        500 ms es mas del doble: no salta por ruido del
+#                        entorno, pero si ante una regresion real.
+# ==============================================================================
+progressiveDefaults:
+  # Imagen de las pruebas de humo e integracion. Version fijada: la politica de
+  # Kyverno de esta practica prohibe la etiqueta latest, y aplica tambien a los
+  # pods que crea el analisis.
+  testImage: curlimages/curl:8.11.1
+  # Imagen de la prueba de carga.
+  loadTestImage: grafana/k6:0.55.0
+
+  thresholds:
+    # Cada cuanto se repiten las pruebas de humo e integracion.
+    intervalo: 20s
+    # La prueba de carga cuesta mas, se ejecuta con menos frecuencia.
+    intervaloCarga: 60s
+    # Usuarios virtuales concurrentes y duracion de cada prueba de carga.
+    vus: 5
+    duracion: 30s
+    # Los dos umbrales que deciden la promocion.
+    tasaErrorMaxima: 0.01
+    latenciaP95Ms: 500
+
+# ==============================================================================
+# Dependencias declaradas en Chart.yaml
+# ==============================================================================
+
+postgresql:
+  enabled: true
+  # Bitnami traslado sus imagenes con tag a un catalogo de pago; el repositorio
+  # bitnamilegacy conserva las publicas, por eso se redirige el registro aqui.
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/postgresql
+    tag: 16.4.0-debian-12-r14
+  auth:
+    username: ""      # se inyecta al instalar
+    password: ""      # se inyecta al instalar
+    database: biblioteca
+    postgresPassword: ""
+  architecture: standalone
+  primary:
+    # Los charts de Bitnami incluyen su propia NetworkPolicy, pero su regla de
+    # entrada declara solo el puerto y ninguna clausula "from", lo que en la
+    # semantica de NetworkPolicy equivale a permitir la conexion desde cualquier
+    # pod del cluster. Eso anularia el aislamiento del enunciado, de modo que se
+    # desactiva y el acceso queda gobernado por las politicas propias del chart,
+    # definidas en templates/networkpolicies.yaml.
+    networkPolicy:
+      enabled: false
+
+    persistence:
+      enabled: true
+      size: 2Gi
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { cpu: 1, memory: 1Gi }
+    podSecurityContext:
+      enabled: true
+      fsGroup: 1001
+    containerSecurityContext:
+      enabled: true
+      runAsNonRoot: true
+      runAsUser: 1001
+      allowPrivilegeEscalation: false
+  volumePermissions:
+    enabled: false
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/os-shell
+      tag: 12-debian-12-r50
+  metrics:
+    enabled: false
+
+rabbitmq:
+  enabled: true
+  # Los charts de Bitnami incluyen su propia NetworkPolicy, pero su regla de
+  # entrada declara solo el puerto y ninguna clausula "from", lo que en la
+  # semantica de NetworkPolicy equivale a permitir la conexion desde cualquier
+  # pod del cluster. Eso anularia el aislamiento del enunciado, de modo que se
+  # desactiva y el acceso queda gobernado por las politicas propias del chart,
+  # definidas en templates/networkpolicies.yaml.
+  networkPolicy:
+    enabled: false
+
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/rabbitmq
+    tag: 4.1.3-debian-12-r1
+  auth:
+    username: ""      # se inyecta al instalar
+    password: ""      # se inyecta al instalar
+    erlangCookie: ""  # se inyecta al instalar
+  persistence:
+    enabled: true
+    size: 1Gi
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 1, memory: 1Gi }
+  replicaCount: 1
+  clustering:
+    enabled: false
+  metrics:
+    enabled: false
+  volumePermissions:
+    enabled: false
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/os-shell
+      tag: 12-debian-12-r50
