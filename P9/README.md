@@ -16,10 +16,10 @@ datos y los secretos intactos y con los tiempos medidos.
 | Punto de entrada del bootstrap | [`P9/scripts/bootstrap.sh`](scripts/bootstrap.sh) |
 | Backend remoto de Terraform | Tipo **`azurerm`** (Azure Blob Storage) con bloqueo por *lease* del blob. Grupo `rg-sa-p9-base-202100265`, cuenta `sap9tfstate202100265`, contenedor `tfstate`, claves `cluster/terraform.tfstate` y `platform/terraform.tfstate` (región `centralus`). Autenticación con Azure AD; sin llaves de la cuenta. Declarado en [`terraform/cluster/main.tf`](terraform/cluster/main.tf) y [`terraform/platform/main.tf`](terraform/platform/main.tf) |
 | Schedule de Velero | **`respaldo-sa-p9`** (namespace `velero`), cada 30 min, retención 7 días. Destino: Azure Blob, cuenta **`sap9velero202100265`**, contenedor `velero`, y snapshots de disco en `rg-sa-p9-base-202100265` (centralus, fuera del clúster). Manifiesto: [`platform/velero/schedule.yaml`](https://github.com/majosanchez07/Practicas-SA-B-202100265-gitops/blob/main/platform/velero/schedule.yaml) |
-| Reconstrucción cronometrada | [`docs/evidencias/reconstruccion/`](docs/evidencias/reconstruccion/) (`desastre-*.log` + `registro-*.log`) |
-| Restauración de datos | [`docs/evidencias/restauracion/`](docs/evidencias/restauracion/) |
-| Prueba de pérdida de nodo | [`docs/evidencias/perdida-nodo/`](docs/evidencias/perdida-nodo/) |
-| RTO y RPO declarados | Declarados: **RTO 45 min · RPO 30 min** ([rto-rpo-declarados.md](docs/rto-rpo-declarados.md)). Medidos: ver [informe-prueba-dr.md](docs/informe-prueba-dr.md) |
+| Reconstrucción cronometrada | [`docs/evidencias/reconstruccion/desastre-20260924T225105Z.log`](docs/evidencias/reconstruccion/desastre-20260924T225105Z.log) (destrucción) + [`docs/evidencias/reconstruccion/registro-20260924T225712Z.log`](docs/evidencias/reconstruccion/registro-20260924T225712Z.log) (reconstrucción) |
+| Restauración de datos | [`docs/evidencias/restauracion/prueba-datos-20260924T222531Z.log`](docs/evidencias/restauracion/prueba-datos-20260924T222531Z.log) |
+| Prueba de pérdida de nodo | [`docs/evidencias/perdida-nodo/drenaje-20260924T224739Z.log`](docs/evidencias/perdida-nodo/drenaje-20260924T224739Z.log) + [`sondeo-20260924T224739Z.log`](docs/evidencias/perdida-nodo/sondeo-20260924T224739Z.log) (primer intento fallido también incluido) |
+| RTO y RPO declarados | Declarados: **RTO 45 min · RPO 30 min** ([rto-rpo-declarados.md](docs/rto-rpo-declarados.md)). Medidos: **RTO 15 min 20 s · RPO 20 min 25 s** (5 filas perdidas). Pérdida de nodo: **121/121 HTTP 200**. Detalle en [informe-prueba-dr.md](docs/informe-prueba-dr.md) |
 | Video demostrativo | _(URL)_. Minutaje en la [sección Video](#video-demostrativo) |
 
 ## Documentos

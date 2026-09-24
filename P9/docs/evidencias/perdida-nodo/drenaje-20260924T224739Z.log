@@ -1,0 +1,171 @@
+2026-09-24T22:47:39Z | === PRUEBA DE PERDIDA DE NODO ===
+NAME                        MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
+sa-platform-api-gateway     1               N/A               2                     71m
+sa-platform-auth-service    1               N/A               1                     71m
+sa-platform-books-service   1               N/A               1                     71m
+sa-platform-loans-service   1               N/A               1                     71m
+sa-platform-postgresql      N/A             1                 1                     71m
+sa-platform-rabbitmq        N/A             1                 1                     71m
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-carga.1-zlw6k aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-carga.2-pr25b aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.1-bqplf aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.2-4sg2m aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.3-7jpdf aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.4-f684w aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.5-6q65t aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.6-v4bhs aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.7-29m65 aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.8-2g5zv aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.1-j5jn2 aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.2-q4nrf aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.3-wnjms aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.4-tppfc aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.5-56qf6 aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.6-kmwsp aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.7-fbgwm aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.8-qld46 aks-workers-68502148-vmss000001
+sa-platform-api-gateway-65f6849c46-b26ct aks-workers-68502148-vmss000001
+sa-platform-api-gateway-65f6849c46-bn8xc aks-workers-68502148-vmss000001
+sa-platform-api-gateway-65f6849c46-qtcff aks-workers-68502148-vmss000000
+sa-platform-auth-service-559b7d64c5-6lf64 aks-workers-68502148-vmss000001
+sa-platform-auth-service-559b7d64c5-s4s7s aks-workers-68502148-vmss000000
+sa-platform-books-service-76d6b9cb7f-mfqwz 6m41s
+sa-platform-books-service-76d6b9cb7f-w6kq2 aks-workers-68502148-vmss000000
+sa-platform-cronjob-insert-29838162-vj6sh aks-workers-68502148-vmss000001
+sa-platform-cronjob-insert-29838164-sm26k aks-workers-68502148-vmss000001
+sa-platform-cronjob-insert-29838166-c9lk5 aks-workers-68502148-vmss000001
+sa-platform-loans-service-556fbf7cb5-557kp aks-workers-68502148-vmss000001
+sa-platform-loans-service-556fbf7cb5-gvq5m aks-workers-68502148-vmss000000
+sa-platform-notifications-service-88d8f9fc7-kdrlh 6m41s
+sa-platform-postgresql-0 aks-workers-68502148-vmss000001
+sa-platform-rabbitmq-0 aks-workers-68502148-vmss000001
+2026-09-24T22:47:41Z | Nodo de PostgreSQL (se conserva): aks-workers-68502148-vmss000001
+2026-09-24T22:47:42Z | Nodo a drenar: aks-workers-68502148-vmss000000 (4 pods de la aplicacion)
+2026-09-24T22:48:27Z | INICIO del drenaje de aks-workers-68502148-vmss000000
+node/aks-workers-68502148-vmss000000 cordoned
+Warning: ignoring DaemonSet-managed Pods: kube-system/azure-cns-q9rst, kube-system/azure-ip-masq-agent-n55lb, kube-system/cloud-node-manager-gxt8k, kube-system/csi-azuredisk-node-x4kq2, kube-system/csi-azurefile-node-hwzgm, kube-system/kube-proxy-rf2gk
+evicting pod argocd/argocd-application-controller-0
+evicting pod kube-system/coredns-674fb5d7b5-qqcc2
+evicting pod velero/velero-8685f99cbc-qcf7m
+evicting pod kube-system/azure-wi-webhook-controller-manager-5d96fbd6f4-6kfkv
+evicting pod argocd/argocd-server-fd9b978b6-rdbzw
+evicting pod argo-rollouts/argo-rollouts-587969c458-kh7cz
+evicting pod argo-rollouts/argo-rollouts-587969c458-br4bh
+evicting pod kube-system/azure-wi-webhook-controller-manager-5d96fbd6f4-kx8q9
+evicting pod kube-system/coredns-674fb5d7b5-6k2bc
+evicting pod kube-system/coredns-autoscaler-688ccdbc55-9pckq
+evicting pod kyverno/kyverno-admission-controller-8df7449bf-pjc5q
+evicting pod kube-system/konnectivity-agent-5f6dbfbb7-d54k4
+evicting pod argocd/argocd-applicationset-controller-d6bf57d66-qn6mm
+evicting pod kube-system/konnectivity-agent-5f6dbfbb7-rq68v
+evicting pod kube-system/metrics-server-7d879dd58f-p92f8
+evicting pod argocd/argocd-redis-7b8b5c8474-sfg9g
+evicting pod sa-p8/sa-platform-auth-service-559b7d64c5-s4s7s
+evicting pod kyverno/kyverno-cleanup-controller-6f5bb9b55f-x7x95
+evicting pod kube-system/metrics-server-7d879dd58f-wvjrr
+evicting pod sa-p8/sa-platform-loans-service-556fbf7cb5-gvq5m
+evicting pod kyverno/kyverno-background-controller-7b8698cfdb-z6t5c
+evicting pod sa-p8/sa-platform-books-service-76d6b9cb7f-w6kq2
+evicting pod kube-system/konnectivity-agent-autoscaler-675746745-h6z24
+evicting pod sa-p8/sa-platform-api-gateway-65f6849c46-qtcff
+evicting pod sealed-secrets/sealed-secrets-controller-6d864976d8-skqfg
+error when evicting pods/"azure-wi-webhook-controller-manager-5d96fbd6f4-kx8q9" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+error when evicting pods/"coredns-674fb5d7b5-6k2bc" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+error when evicting pods/"konnectivity-agent-5f6dbfbb7-rq68v" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+I0924 16:48:30.271154   94297 request.go:754] "Waited before sending request" delay="1.200215449s" reason="client-side throttling, not priority and fairness" verb="POST" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-auth-service-559b7d64c5-s4s7s/eviction"
+error when evicting pods/"metrics-server-7d879dd58f-wvjrr" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+pod/kyverno-admission-controller-8df7449bf-pjc5q evicted
+pod/azure-wi-webhook-controller-manager-5d96fbd6f4-6kfkv evicted
+pod/coredns-autoscaler-688ccdbc55-9pckq evicted
+pod/konnectivity-agent-autoscaler-675746745-h6z24 evicted
+pod/metrics-server-7d879dd58f-p92f8 evicted
+pod/kyverno-cleanup-controller-6f5bb9b55f-x7x95 evicted
+pod/coredns-674fb5d7b5-qqcc2 evicted
+pod/kyverno-background-controller-7b8698cfdb-z6t5c evicted
+evicting pod kube-system/azure-wi-webhook-controller-manager-5d96fbd6f4-kx8q9
+error when evicting pods/"azure-wi-webhook-controller-manager-5d96fbd6f4-kx8q9" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/coredns-674fb5d7b5-6k2bc
+error when evicting pods/"coredns-674fb5d7b5-6k2bc" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/konnectivity-agent-5f6dbfbb7-rq68v
+evicting pod kube-system/metrics-server-7d879dd58f-wvjrr
+error when evicting pods/"metrics-server-7d879dd58f-wvjrr" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+I0924 16:48:40.372114   94297 request.go:754] "Waited before sending request" delay="3.622360996s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/velero/pods/velero-8685f99cbc-qcf7m"
+evicting pod kube-system/azure-wi-webhook-controller-manager-5d96fbd6f4-kx8q9
+evicting pod kube-system/coredns-674fb5d7b5-6k2bc
+evicting pod kube-system/metrics-server-7d879dd58f-wvjrr
+error when evicting pods/"metrics-server-7d879dd58f-wvjrr" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+pod/azure-wi-webhook-controller-manager-5d96fbd6f4-kx8q9 evicted
+I0924 16:48:50.572282   94297 request.go:754] "Waited before sending request" delay="3.2747267s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-redis-7b8b5c8474-sfg9g"
+pod/coredns-674fb5d7b5-6k2bc evicted
+evicting pod kube-system/metrics-server-7d879dd58f-wvjrr
+error when evicting pods/"metrics-server-7d879dd58f-wvjrr" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+I0924 16:49:00.772522   94297 request.go:754] "Waited before sending request" delay="2.713525513s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-api-gateway-65f6849c46-qtcff"
+pod/argocd-application-controller-0 evicted
+pod/argo-rollouts-587969c458-kh7cz evicted
+pod/argo-rollouts-587969c458-br4bh evicted
+pod/argocd-redis-7b8b5c8474-sfg9g evicted
+pod/sa-platform-books-service-76d6b9cb7f-w6kq2 evicted
+pod/konnectivity-agent-5f6dbfbb7-d54k4 evicted
+pod/sa-platform-loans-service-556fbf7cb5-gvq5m evicted
+pod/sa-platform-auth-service-559b7d64c5-s4s7s evicted
+pod/argocd-server-fd9b978b6-rdbzw evicted
+pod/sa-platform-api-gateway-65f6849c46-qtcff evicted
+pod/sealed-secrets-controller-6d864976d8-skqfg evicted
+evicting pod kube-system/metrics-server-7d879dd58f-wvjrr
+error when evicting pods/"metrics-server-7d879dd58f-wvjrr" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+pod/argocd-applicationset-controller-d6bf57d66-qn6mm evicted
+pod/velero-8685f99cbc-qcf7m evicted
+evicting pod kube-system/metrics-server-7d879dd58f-wvjrr
+error when evicting pods/"metrics-server-7d879dd58f-wvjrr" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+pod/konnectivity-agent-5f6dbfbb7-rq68v evicted
+evicting pod kube-system/metrics-server-7d879dd58f-wvjrr
+error when evicting pods/"metrics-server-7d879dd58f-wvjrr" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-wvjrr
+error when evicting pods/"metrics-server-7d879dd58f-wvjrr" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-wvjrr
+error when evicting pods/"metrics-server-7d879dd58f-wvjrr" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-wvjrr
+error when evicting pods/"metrics-server-7d879dd58f-wvjrr" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-wvjrr
+error when evicting pods/"metrics-server-7d879dd58f-wvjrr" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-wvjrr
+error when evicting pods/"metrics-server-7d879dd58f-wvjrr" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-wvjrr
+pod/metrics-server-7d879dd58f-wvjrr evicted
+node/aks-workers-68502148-vmss000000 drained
+2026-09-24T22:49:49Z | FIN del drenaje
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-carga.1-zlw6k Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-carga.2-pr25b Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.1-bqplf Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.2-4sg2m Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.3-7jpdf Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.4-f684w Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.5-6q65t Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.6-v4bhs Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.7-29m65 Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-de-humo.8-2g5zv Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.1-j5jn2 Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.2-q4nrf Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.3-wnjms Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.4-tppfc Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.5-56qf6 Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.6-kmwsp Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.7-fbgwm Completed aks-workers-68502148-vmss000001
+75d20861-928c-4949-81e8-771fb3a65867.prueba-integracion.8-qld46 Completed aks-workers-68502148-vmss000001
+sa-platform-api-gateway-65f6849c46-b26ct Running aks-workers-68502148-vmss000001
+sa-platform-api-gateway-65f6849c46-g4vg2 Running aks-workers-68502148-vmss000001
+sa-platform-auth-service-559b7d64c5-6lf64 Running aks-workers-68502148-vmss000001
+sa-platform-auth-service-559b7d64c5-c5lzw Running aks-workers-68502148-vmss000001
+sa-platform-books-service-76d6b9cb7f-mfqwz Running 9m21s
+sa-platform-books-service-76d6b9cb7f-p7vtj Running aks-workers-68502148-vmss000001
+sa-platform-cronjob-insert-29838166-c9lk5 Completed aks-workers-68502148-vmss000001
+sa-platform-cronjob-insert-29838168-c2vjh Completed aks-workers-68502148-vmss000001
+sa-platform-cronjob-insert-29838170-rtn4m Completed aks-workers-68502148-vmss000001
+sa-platform-cronjob-summary-29838170-wv2qq Completed aks-workers-68502148-vmss000001
+sa-platform-loans-service-556fbf7cb5-557kp Running aks-workers-68502148-vmss000001
+sa-platform-loans-service-556fbf7cb5-xmv7f Running aks-workers-68502148-vmss000001
+sa-platform-notifications-service-88d8f9fc7-kdrlh Running 9m21s
+sa-platform-postgresql-0 Running aks-workers-68502148-vmss000001
+sa-platform-rabbitmq-0 Running aks-workers-68502148-vmss000001
+2026-09-24T22:50:20Z | Sondeo: 121 de 121 peticiones con HTTP 200 durante la prueba (100,00%)
+2026-09-24T22:50:21Z | Nodo aks-workers-68502148-vmss000000 devuelto al servicio (uncordon). Sondeo completo: /home/majo/Documentos/SA/Practicas-SA-B-202100265/P9/docs/evidencias/perdida-nodo/sondeo-20260924T224739Z.log

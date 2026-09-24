@@ -1,0 +1,152 @@
+2026-09-24T22:28:56Z | === PRUEBA DE PERDIDA DE NODO ===
+NAME                        MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
+sa-platform-api-gateway     1               N/A               1                     53m
+sa-platform-auth-service    1               N/A               1                     53m
+sa-platform-books-service   1               N/A               1                     53m
+sa-platform-loans-service   1               N/A               1                     53m
+sa-platform-postgresql      N/A             1                 1                     53m
+sa-platform-rabbitmq        N/A             1                 1                     53m
+sa-platform-api-gateway-776bb6549b-cgdvf aks-workers-68502148-vmss000000
+sa-platform-api-gateway-776bb6549b-tmvjz aks-workers-68502148-vmss000001
+sa-platform-auth-service-858878f49-fjclf 52m
+sa-platform-auth-service-858878f49-h6kzr 53m
+sa-platform-books-service-779dfc4b9-c87rw 52m
+sa-platform-books-service-779dfc4b9-j88w5 53m
+sa-platform-cronjob-insert-29838142-bj7b8 aks-workers-68502148-vmss000001
+sa-platform-cronjob-insert-29838144-6gn79 aks-workers-68502148-vmss000001
+sa-platform-cronjob-insert-29838146-wltrg aks-workers-68502148-vmss000001
+sa-platform-cronjob-summary-29838140-j6nsd aks-workers-68502148-vmss000001
+sa-platform-loans-service-68c5bfb74c-hrn47 53m
+sa-platform-loans-service-68c5bfb74c-ptwfv 52m
+sa-platform-notifications-service-75c85bc8c-27lwg 53m
+sa-platform-postgresql-0 aks-workers-68502148-vmss000001
+sa-platform-rabbitmq-0 aks-workers-68502148-vmss000001
+2026-09-24T22:28:59Z | Nodo a drenar (el que aloja mas pods): aks-workers-68502148-vmss000001
+2026-09-24T22:29:15Z | INICIO del drenaje de aks-workers-68502148-vmss000001
+node/aks-workers-68502148-vmss000001 cordoned
+Warning: ignoring DaemonSet-managed Pods: kube-system/azure-cns-6szgt, kube-system/azure-ip-masq-agent-9vd9f, kube-system/cloud-node-manager-2c9jx, kube-system/csi-azuredisk-node-zcnpd, kube-system/csi-azurefile-node-l5htp, kube-system/kube-proxy-hhq5f
+evicting pod argocd/argocd-repo-server-d95f75859-lqbqw
+evicting pod argocd/argocd-dex-server-7b4899c6dd-5jrhq
+evicting pod kube-system/konnectivity-agent-5f6dbfbb7-ld88s
+evicting pod argocd/argocd-redis-7b8b5c8474-d9ntj
+evicting pod argocd/argocd-applicationset-controller-d6bf57d66-9r5qj
+evicting pod sa-p8/sa-platform-books-service-779dfc4b9-j88w5
+evicting pod kube-system/konnectivity-agent-5f6dbfbb7-v6hph
+evicting pod velero/velero-8685f99cbc-p6dbs
+evicting pod kyverno/kyverno-admission-controller-f6dcb847f-8w85m
+evicting pod sa-p8/sa-platform-cronjob-insert-29838142-bj7b8
+evicting pod kyverno/kyverno-background-controller-5f89999d5b-vd5jd
+evicting pod sa-p8/sa-platform-cronjob-insert-29838144-6gn79
+evicting pod kyverno/kyverno-reports-controller-6b4d5d69d9-8v5jf
+evicting pod sa-p8/sa-platform-cronjob-insert-29838146-wltrg
+evicting pod sa-p8/sa-platform-api-gateway-776bb6549b-tmvjz
+evicting pod sa-p8/sa-platform-auth-service-858878f49-h6kzr
+evicting pod sa-p8/sa-platform-cronjob-summary-29838140-j6nsd
+evicting pod kyverno/kyverno-cleanup-controller-ff975fdf7-79g8p
+evicting pod sa-p8/sa-platform-postgresql-0
+evicting pod sa-p8/sa-platform-loans-service-68c5bfb74c-hrn47
+evicting pod sa-p8/sa-platform-rabbitmq-0
+evicting pod sealed-secrets/sealed-secrets-controller-6d864976d8-hn2hd
+evicting pod argocd/argocd-notifications-controller-c9d446bc8-2zctb
+pod/sa-platform-cronjob-insert-29838144-6gn79 evicted
+pod/sa-platform-cronjob-summary-29838140-j6nsd evicted
+pod/sa-platform-cronjob-insert-29838146-wltrg evicted
+I0924 16:29:19.252380   58317 request.go:754] "Waited before sending request" delay="1.000247895s" reason="client-side throttling, not priority and fairness" verb="POST" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/velero/pods/velero-8685f99cbc-p6dbs/eviction"
+error when evicting pods/"konnectivity-agent-5f6dbfbb7-v6hph" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+pod/kyverno-cleanup-controller-ff975fdf7-79g8p evicted
+pod/kyverno-admission-controller-f6dcb847f-8w85m evicted
+pod/sa-platform-cronjob-insert-29838142-bj7b8 evicted
+pod/kyverno-reports-controller-6b4d5d69d9-8v5jf evicted
+pod/kyverno-background-controller-5f89999d5b-vd5jd evicted
+evicting pod kube-system/konnectivity-agent-5f6dbfbb7-v6hph
+I0924 16:29:29.442387   58317 request.go:754] "Waited before sending request" delay="2.807878975s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-auth-service-858878f49-h6kzr"
+I0924 16:29:39.642153   58317 request.go:754] "Waited before sending request" delay="2.772805444s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/kube-system/pods/konnectivity-agent-5f6dbfbb7-v6hph"
+I0924 16:29:49.842009   58317 request.go:754] "Waited before sending request" delay="2.824523844s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-dex-server-7b4899c6dd-5jrhq"
+pod/konnectivity-agent-5f6dbfbb7-ld88s evicted
+I0924 16:29:59.842359   58317 request.go:754] "Waited before sending request" delay="2.593962584s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-applicationset-controller-d6bf57d66-9r5qj"
+pod/konnectivity-agent-5f6dbfbb7-v6hph evicted
+I0924 16:30:10.042085   58317 request.go:754] "Waited before sending request" delay="2.446612392s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-postgresql-0"
+I0924 16:30:20.241608   58317 request.go:754] "Waited before sending request" delay="2.480363773s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-repo-server-d95f75859-lqbqw"
+I0924 16:30:30.241655   58317 request.go:754] "Waited before sending request" delay="2.465716309s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-api-gateway-776bb6549b-tmvjz"
+I0924 16:30:40.242265   58317 request.go:754] "Waited before sending request" delay="2.425545945s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-dex-server-7b4899c6dd-5jrhq"
+I0924 16:30:50.442095   58317 request.go:754] "Waited before sending request" delay="2.392195145s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/velero/pods/velero-8685f99cbc-p6dbs"
+I0924 16:31:00.641555   58317 request.go:754] "Waited before sending request" delay="2.453727127s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sealed-secrets/pods/sealed-secrets-controller-6d864976d8-hn2hd"
+I0924 16:31:10.641979   58317 request.go:754] "Waited before sending request" delay="2.417094043s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-rabbitmq-0"
+I0924 16:31:20.841484   58317 request.go:754] "Waited before sending request" delay="2.479102983s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-loans-service-68c5bfb74c-hrn47"
+I0924 16:31:30.842092   58317 request.go:754] "Waited before sending request" delay="2.442782956s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-notifications-controller-c9d446bc8-2zctb"
+I0924 16:31:41.041491   58317 request.go:754] "Waited before sending request" delay="2.413110578s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-postgresql-0"
+I0924 16:31:51.042331   58317 request.go:754] "Waited before sending request" delay="2.4606897s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-auth-service-858878f49-h6kzr"
+I0924 16:32:01.241815   58317 request.go:754] "Waited before sending request" delay="2.264942282s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-api-gateway-776bb6549b-tmvjz"
+I0924 16:32:11.441536   58317 request.go:754] "Waited before sending request" delay="2.39689318s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-redis-7b8b5c8474-d9ntj"
+I0924 16:32:21.441689   58317 request.go:754] "Waited before sending request" delay="2.45265133s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/velero/pods/velero-8685f99cbc-p6dbs"
+I0924 16:32:31.641803   58317 request.go:754] "Waited before sending request" delay="2.411198928s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sealed-secrets/pods/sealed-secrets-controller-6d864976d8-hn2hd"
+I0924 16:32:41.842103   58317 request.go:754] "Waited before sending request" delay="2.476741309s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-books-service-779dfc4b9-j88w5"
+I0924 16:32:52.041355   58317 request.go:754] "Waited before sending request" delay="2.434051977s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-rabbitmq-0"
+I0924 16:33:02.041672   58317 request.go:754] "Waited before sending request" delay="2.405514659s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-applicationset-controller-d6bf57d66-9r5qj"
+I0924 16:33:12.241404   58317 request.go:754] "Waited before sending request" delay="2.457653675s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-notifications-controller-c9d446bc8-2zctb"
+I0924 16:33:22.242340   58317 request.go:754] "Waited before sending request" delay="2.4255484s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-repo-server-d95f75859-lqbqw"
+I0924 16:33:32.441874   58317 request.go:754] "Waited before sending request" delay="2.485869606s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-auth-service-858878f49-h6kzr"
+I0924 16:33:42.442191   58317 request.go:754] "Waited before sending request" delay="2.453909471s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-redis-7b8b5c8474-d9ntj"
+I0924 16:33:52.641729   58317 request.go:754] "Waited before sending request" delay="2.320234637s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-dex-server-7b4899c6dd-5jrhq"
+I0924 16:34:02.642024   58317 request.go:754] "Waited before sending request" delay="2.386941841s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sealed-secrets/pods/sealed-secrets-controller-6d864976d8-hn2hd"
+I0924 16:34:12.841362   58317 request.go:754] "Waited before sending request" delay="2.43614289s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-books-service-779dfc4b9-j88w5"
+I0924 16:34:22.841549   58317 request.go:754] "Waited before sending request" delay="2.412693196s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-loans-service-68c5bfb74c-hrn47"
+I0924 16:34:32.841969   58317 request.go:754] "Waited before sending request" delay="2.463329497s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-notifications-controller-c9d446bc8-2zctb"
+I0924 16:34:43.042217   58317 request.go:754] "Waited before sending request" delay="2.427573611s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-postgresql-0"
+I0924 16:34:53.242078   58317 request.go:754] "Waited before sending request" delay="2.39682116s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-repo-server-d95f75859-lqbqw"
+I0924 16:35:03.242350   58317 request.go:754] "Waited before sending request" delay="2.363955552s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-api-gateway-776bb6549b-tmvjz"
+I0924 16:35:13.441870   58317 request.go:754] "Waited before sending request" delay="2.412208359s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-redis-7b8b5c8474-d9ntj"
+I0924 16:35:23.641999   58317 request.go:754] "Waited before sending request" delay="2.384924583s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-dex-server-7b4899c6dd-5jrhq"
+I0924 16:35:33.841954   58317 request.go:754] "Waited before sending request" delay="2.426342281s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/velero/pods/velero-8685f99cbc-p6dbs"
+I0924 16:35:44.041538   58317 request.go:754] "Waited before sending request" delay="2.486745221s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sealed-secrets/pods/sealed-secrets-controller-6d864976d8-hn2hd"
+I0924 16:35:54.041930   58317 request.go:754] "Waited before sending request" delay="2.461002453s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-rabbitmq-0"
+I0924 16:36:04.041917   58317 request.go:754] "Waited before sending request" delay="2.334728094s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-applicationset-controller-d6bf57d66-9r5qj"
+I0924 16:36:14.241826   58317 request.go:754] "Waited before sending request" delay="2.476948421s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-notifications-controller-c9d446bc8-2zctb"
+I0924 16:36:24.441744   58317 request.go:754] "Waited before sending request" delay="2.447189904s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-postgresql-0"
+I0924 16:36:34.442252   58317 request.go:754] "Waited before sending request" delay="2.406549705s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-auth-service-858878f49-h6kzr"
+I0924 16:36:44.641421   58317 request.go:754] "Waited before sending request" delay="2.46824336s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-api-gateway-776bb6549b-tmvjz"
+I0924 16:36:54.641795   58317 request.go:754] "Waited before sending request" delay="2.439446267s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-dex-server-7b4899c6dd-5jrhq"
+I0924 16:37:04.841521   58317 request.go:754] "Waited before sending request" delay="2.348378746s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/velero/pods/velero-8685f99cbc-p6dbs"
+I0924 16:37:14.841632   58317 request.go:754] "Waited before sending request" delay="2.455092991s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-books-service-779dfc4b9-j88w5"
+I0924 16:37:24.842059   58317 request.go:754] "Waited before sending request" delay="2.424563149s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-loans-service-68c5bfb74c-hrn47"
+I0924 16:37:35.041898   58317 request.go:754] "Waited before sending request" delay="2.397424281s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-applicationset-controller-d6bf57d66-9r5qj"
+I0924 16:37:45.241489   58317 request.go:754] "Waited before sending request" delay="2.356644175s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-notifications-controller-c9d446bc8-2zctb"
+I0924 16:37:55.441723   58317 request.go:754] "Waited before sending request" delay="2.413870107s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-postgresql-0"
+I0924 16:38:05.642064   58317 request.go:754] "Waited before sending request" delay="2.470926311s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-repo-server-d95f75859-lqbqw"
+I0924 16:38:15.842297   58317 request.go:754] "Waited before sending request" delay="2.33870483s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-auth-service-858878f49-h6kzr"
+I0924 16:38:26.042194   58317 request.go:754] "Waited before sending request" delay="2.484315861s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-api-gateway-776bb6549b-tmvjz"
+I0924 16:38:36.241386   58317 request.go:754] "Waited before sending request" delay="2.453435674s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-redis-7b8b5c8474-d9ntj"
+I0924 16:38:46.242410   58317 request.go:754] "Waited before sending request" delay="2.421592065s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/velero/pods/velero-8685f99cbc-p6dbs"
+I0924 16:38:56.441403   58317 request.go:754] "Waited before sending request" delay="2.4724304s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sealed-secrets/pods/sealed-secrets-controller-6d864976d8-hn2hd"
+I0924 16:39:06.441867   58317 request.go:754] "Waited before sending request" delay="2.439654507s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/sa-p8/pods/sa-platform-rabbitmq-0"
+I0924 16:39:16.441997   58317 request.go:754] "Waited before sending request" delay="2.313820217s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://aks-sa-p9-202100265-9vpi0ogp.hcp.centralus.azmk8s.io:443/api/v1/namespaces/argocd/pods/argocd-applicationset-controller-d6bf57d66-9r5qj"
+There are pending pods in node "aks-workers-68502148-vmss000001" when an error occurred: [error when waiting for pod "sa-platform-auth-service-858878f49-h6kzr" in namespace "sa-p8" to terminate: context deadline exceeded, error when waiting for pod "argocd-repo-server-d95f75859-lqbqw" in namespace "argocd" to terminate: context deadline exceeded, error when waiting for pod "sa-platform-postgresql-0" in namespace "sa-p8" to terminate: context deadline exceeded, error when waiting for pod "argocd-notifications-controller-c9d446bc8-2zctb" in namespace "argocd" to terminate: context deadline exceeded, error when waiting for pod "argocd-applicationset-controller-d6bf57d66-9r5qj" in namespace "argocd" to terminate: context deadline exceeded, error when waiting for pod "sa-platform-loans-service-68c5bfb74c-hrn47" in namespace "sa-p8" to terminate: context deadline exceeded, error when waiting for pod "sa-platform-rabbitmq-0" in namespace "sa-p8" to terminate: context deadline exceeded, error when waiting for pod "sa-platform-books-service-779dfc4b9-j88w5" in namespace "sa-p8" to terminate: context deadline exceeded, error when waiting for pod "sealed-secrets-controller-6d864976d8-hn2hd" in namespace "sealed-secrets" to terminate: context deadline exceeded, error when waiting for pod "velero-8685f99cbc-p6dbs" in namespace "velero" to terminate: context deadline exceeded, error when waiting for pod "argocd-dex-server-7b4899c6dd-5jrhq" in namespace "argocd" to terminate: context deadline exceeded, error when waiting for pod "argocd-redis-7b8b5c8474-d9ntj" in namespace "argocd" to terminate: context deadline exceeded, error when waiting for pod "sa-platform-api-gateway-776bb6549b-tmvjz" in namespace "sa-p8" to terminate: context deadline exceeded]
+pod/argocd-applicationset-controller-d6bf57d66-9r5qj
+pod/argocd-dex-server-7b4899c6dd-5jrhq
+pod/argocd-notifications-controller-c9d446bc8-2zctb
+pod/argocd-redis-7b8b5c8474-d9ntj
+pod/argocd-repo-server-d95f75859-lqbqw
+pod/sa-platform-api-gateway-776bb6549b-tmvjz
+pod/sa-platform-auth-service-858878f49-h6kzr
+pod/sa-platform-books-service-779dfc4b9-j88w5
+pod/sa-platform-loans-service-68c5bfb74c-hrn47
+pod/sa-platform-postgresql-0
+pod/sa-platform-rabbitmq-0
+pod/sealed-secrets-controller-6d864976d8-hn2hd
+pod/velero-8685f99cbc-p6dbs
+error: unable to drain node "aks-workers-68502148-vmss000001" due to error: [error when waiting for pod "sa-platform-auth-service-858878f49-h6kzr" in namespace "sa-p8" to terminate: context deadline exceeded, error when waiting for pod "argocd-repo-server-d95f75859-lqbqw" in namespace "argocd" to terminate: context deadline exceeded, error when waiting for pod "sa-platform-postgresql-0" in namespace "sa-p8" to terminate: context deadline exceeded, error when waiting for pod "argocd-notifications-controller-c9d446bc8-2zctb" in namespace "argocd" to terminate: context deadline exceeded, error when waiting for pod "argocd-applicationset-controller-d6bf57d66-9r5qj" in namespace "argocd" to terminate: context deadline exceeded, error when waiting for pod "sa-platform-loans-service-68c5bfb74c-hrn47" in namespace "sa-p8" to terminate: context deadline exceeded, error when waiting for pod "sa-platform-rabbitmq-0" in namespace "sa-p8" to terminate: context deadline exceeded, error when waiting for pod "sa-platform-books-service-779dfc4b9-j88w5" in namespace "sa-p8" to terminate: context deadline exceeded, error when waiting for pod "sealed-secrets-controller-6d864976d8-hn2hd" in namespace "sealed-secrets" to terminate: context deadline exceeded, error when waiting for pod "velero-8685f99cbc-p6dbs" in namespace "velero" to terminate: context deadline exceeded, error when waiting for pod "argocd-dex-server-7b4899c6dd-5jrhq" in namespace "argocd" to terminate: context deadline exceeded, error when waiting for pod "argocd-redis-7b8b5c8474-d9ntj" in namespace "argocd" to terminate: context deadline exceeded, error when waiting for pod "sa-platform-api-gateway-776bb6549b-tmvjz" in namespace "sa-p8" to terminate: context deadline exceeded], continuing command...
+There are pending nodes to be drained:
+ aks-workers-68502148-vmss000001
+error when waiting for pod "sa-platform-auth-service-858878f49-h6kzr" in namespace "sa-p8" to terminate: context deadline exceeded
+error when waiting for pod "argocd-repo-server-d95f75859-lqbqw" in namespace "argocd" to terminate: context deadline exceeded
+error when waiting for pod "sa-platform-postgresql-0" in namespace "sa-p8" to terminate: context deadline exceeded
+error when waiting for pod "argocd-notifications-controller-c9d446bc8-2zctb" in namespace "argocd" to terminate: context deadline exceeded
+error when waiting for pod "argocd-applicationset-controller-d6bf57d66-9r5qj" in namespace "argocd" to terminate: context deadline exceeded
+error when waiting for pod "sa-platform-loans-service-68c5bfb74c-hrn47" in namespace "sa-p8" to terminate: context deadline exceeded
+error when waiting for pod "sa-platform-rabbitmq-0" in namespace "sa-p8" to terminate: context deadline exceeded
+error when waiting for pod "sa-platform-books-service-779dfc4b9-j88w5" in namespace "sa-p8" to terminate: context deadline exceeded
+error when waiting for pod "sealed-secrets-controller-6d864976d8-hn2hd" in namespace "sealed-secrets" to terminate: context deadline exceeded
+error when waiting for pod "velero-8685f99cbc-p6dbs" in namespace "velero" to terminate: context deadline exceeded
+error when waiting for pod "argocd-dex-server-7b4899c6dd-5jrhq" in namespace "argocd" to terminate: context deadline exceeded
+error when waiting for pod "argocd-redis-7b8b5c8474-d9ntj" in namespace "argocd" to terminate: context deadline exceeded
+error when waiting for pod "sa-platform-api-gateway-776bb6549b-tmvjz" in namespace "sa-p8" to terminate: context deadline exceeded

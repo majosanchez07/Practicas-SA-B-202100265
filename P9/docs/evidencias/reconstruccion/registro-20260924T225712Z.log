@@ -1,0 +1,20 @@
+2026-09-24T22:57:13Z | INICIO bootstrap (operador: josuecruz19122001@gmail.com, suscripcion 139e5968-0223-41ee-9927-72376b30dcc2)
+2026-09-24T22:57:17Z | PASO 0 OK: estado remoto, almacenamiento de respaldos y llave externa disponibles en rg-sa-p9-base-202100265
+2026-09-24T23:04:14Z | PASO 1 OK: cluster AKS y nodos listos (2 nodos)
+2026-09-24T23:07:37Z | PASO 2 OK: Sealed Secrets (llave restaurada), Velero y ArgoCD instalados
+2026-09-24T23:07:38Z | PASO 3: restaurando volumenes desde el respaldo respaldo-sa-p9-20260924223043
+2026-09-24T23:07:48Z | PASO 3 OK: volumenes restaurados (2 PVC)
+2026-09-24T23:09:03Z | PASO 4 OK: aplicacion raiz raiz-sa-p9 creada
+2026-09-24T23:09:49Z | PASO 5: raiz-sa-p9 Synced/Healthy
+2026-09-24T23:10:01Z | PASO 5: argo-rollouts Synced/Healthy
+2026-09-24T23:10:25Z | PASO 5: kyverno Synced/Healthy
+2026-09-24T23:10:26Z | PASO 5: secretos-cifrados Synced/Healthy
+2026-09-24T23:10:27Z | PASO 5: politicas-admision Synced/Healthy
+2026-09-24T23:10:28Z | PASO 5: respaldos-velero Synced/Healthy
+2026-09-24T23:12:10Z | PASO 5: sa-platform Synced/Healthy
+2026-09-24T23:12:11Z | VERIFICACION: SealedSecret descifrado (Secret sa-platform-secret presente)
+2026-09-24T23:12:13Z | VERIFICACION: filas en cronjobs.ejecuciones tras reconstruir = 28
+2026-09-24T23:12:15Z | VERIFICACION: marcas de verificacion restauradas = antes-del-respaldo-215000, antes-del-respaldo-222532
+2026-09-24T23:12:15Z | VERIFICACION: politicas activas = 3
+2026-09-24T23:12:16Z | VERIFICACION: schedule = Enabled
+2026-09-24T23:12:16Z | FIN bootstrap. Duracion del bootstrap = 15 min 4 s

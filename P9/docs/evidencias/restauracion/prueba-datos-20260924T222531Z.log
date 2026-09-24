@@ -1,0 +1,31 @@
+2026-09-24T22:25:31Z | === PRUEBA DE RESTAURACION DE DATOS ===
+2026-09-24T22:25:34Z | 1. Marca A insertada. Contenido de dr.verificacion:
+1|antes-del-respaldo-215000|2026-09-24 21:50:01.145256+00
+2|antes-del-respaldo-222532|2026-09-24 22:25:34.069353+00
+2026-09-24T22:25:37Z | 1. Filas en cronjobs.ejecuciones = 25; ultima = 2026-09-24 22:24:02.65628+00
+2026-09-24T22:25:37Z | 2. Respaldo prueba-datos-20260924222537 (desde el schedule respaldo-sa-p9)
+Creating backup from schedule, all other filters are ignored.
+Backup request "prueba-datos-20260924222537" submitted successfully.
+Waiting for backup to complete. You may safely press ctrl-c to stop waiting - your backup will continue in the background.
+................................................................
+Backup completed with status: Completed. You may check for more information using the commands `velero backup describe prueba-datos-20260924222537` and `velero backup logs prueba-datos-20260924222537`.
+2026-09-24T22:26:46Z | 2. Fase = Completed; inicio = 2026-09-24T22:26:33Z; snapshots = 2
+2026-09-24T22:26:47Z | 2. Volcado del hook dentro del volumen: -rw-r--r-- 1 1001 1001 16158 Sep 24 22:26 biblioteca.sql -rw-r--r-- 1 1001 1001    21 Sep 24 22:26 marca.txt 2026-09-24T22:26:35Z
+2026-09-24T22:26:53Z | 3. Marca B insertada DESPUES del respaldo (se espera perderla)
+2026-09-24T22:26:53Z | 4. DESASTRE: DELETE de todas las filas y eliminacion del volumen
+2026-09-24T22:27:04Z | 4. Filas tras el borrado: dr.verificacion=0, cronjobs.ejecuciones=0
+2026-09-24T22:27:39Z | 4. Volumen data-sa-platform-postgresql-0 eliminado
+Restore request "restaura-prueba-datos-20260924222537" submitted successfully.
+Waiting for restore to complete. You may safely press ctrl-c to stop waiting - your restore will continue in the background.
+........................
+Restore completed with status: Completed. You may check for more information using the commands `velero restore describe restaura-prueba-datos-20260924222537` and `velero restore logs restaura-prueba-datos-20260924222537`.
+2026-09-24T22:28:06Z | 5. Restauracion restaura-prueba-datos-20260924222537 fase = Completed
+2026-09-24T22:28:39Z | 5. Base de datos en linea. Tiempo de restauracion de datos = 60 s (la raiz reactiva la sincronizacion de sa-platform)
+2026-09-24T22:28:39Z | 6. VERIFICACION DEL CONTENIDO RESTAURADO - dr.verificacion:
+1|antes-del-respaldo-215000|2026-09-24 21:50:01.145256+00
+2|antes-del-respaldo-222532|2026-09-24 22:25:34.069353+00
+2026-09-24T22:28:43Z | 6. cronjobs.ejecuciones: antes del respaldo=25, restauradas=26; ultima restaurada = 2026-09-24 22:26:02.957894+00
+2026-09-24T22:28:46Z | 6. OK: la marca A (anterior al respaldo) fue recuperada
+2026-09-24T22:28:46Z | 6. Marca B perdida, como se esperaba: fue escrita despues del respaldo
+2026-09-24T22:28:46Z | RPO REAL = desastre (2026-09-24T22:26:53Z) - inicio del respaldo (2026-09-24T22:26:33Z) = 20 s
+2026-09-24T22:28:46Z | Datos no recuperados: todo lo escrito despues de 2026-09-24T22:26:33Z (marca B y las ejecuciones del cronjob posteriores).
