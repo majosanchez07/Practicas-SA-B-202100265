@@ -11,11 +11,11 @@
 # Aqui Terraform instala solo lo imprescindible para que el resto se levante
 # solo, en este orden:
 #
-#   1. La llave de Sealed Secrets, leida de AWS Secrets Manager (fuera del
+#   1. La llave de Sealed Secrets, leida de Azure Key Vault (fuera del
 #      cluster), ANTES que el controlador.
 #   2. El controlador de Sealed Secrets, que arranca con esa llave y por lo
 #      tanto puede descifrar los SealedSecret que ya estan en el repositorio.
-#   3. Velero, apuntando al bucket de S3 externo, para poder restaurar datos.
+#   3. Velero, apuntando a la cuenta de almacenamiento externa, para poder restaurar datos.
 #   4. ArgoCD.
 #   5. La aplicacion raiz (app-of-apps), que levanta todo lo demas desde el
 #      repositorio GitOps: Argo Rollouts, Kyverno, politicas, secretos, el
@@ -39,12 +39,18 @@
 # etiqueta sealedsecrets.bitnami.com/sealed-secrets-key=active en su namespace.
 # ------------------------------------------------------------------------------
 
-data "aws_secretsmanager_secret_version" "llave_sealed" {
-  secret_id = var.secreto_llave_sealed
+data "azurerm_key_vault" "base" {
+  name                = var.key_vault
+  resource_group_name = var.grupo_base
+}
+
+data "azurerm_key_vault_secret" "llave_sealed" {
+  name         = var.secreto_llave_sealed
+  key_vault_id = data.azurerm_key_vault.base.id
 }
 
 locals {
-  llave_sealed = jsondecode(data.aws_secretsmanager_secret_version.llave_sealed.secret_string)
+  llave_sealed = jsondecode(data.azurerm_key_vault_secret.llave_sealed.value)
 }
 
 resource "kubernetes_secret" "llave_sealed" {
@@ -58,7 +64,7 @@ resource "kubernetes_secret" "llave_sealed" {
 
   type = "kubernetes.io/tls"
 
-  # Secrets Manager guarda los valores tal como los entrega kubectl (base64);
+  # El vault guarda los valores tal como los entrega kubectl (base64);
   # el provider espera el contenido en claro, de ahi el base64decode.
   data = {
     "tls.crt" = base64decode(local.llave_sealed["tls.crt"])
@@ -83,7 +89,7 @@ resource "helm_release" "sealed_secrets" {
     value = "sealed-secrets-controller"
   }
 
-  # Sin rotacion automatica: una llave nueva que no este en Secrets Manager
+  # Sin rotacion automatica: una llave nueva que no este en el Key Vault
   # romperia la continuidad. La rotacion se hace a proposito con
   # scripts/respaldar-llave-sealed.sh.
   set {
@@ -97,10 +103,19 @@ resource "helm_release" "sealed_secrets" {
 # ------------------------------------------------------------------------------
 # 3. Velero
 #
-# Destino: bucket S3 (objetos de Kubernetes) y snapshots EBS (volumenes). Los
-# dos viven en la cuenta de AWS, fuera del cluster: sobreviven a su perdida.
-# Credenciales: IRSA, el rol lo crea la capa cluster/. Nada estatico.
+# Destino: cuenta de almacenamiento sap9velero202100265 (objetos de Kubernetes)
+# y snapshots de disco en el grupo base. Los dos viven fuera del cluster, en
+# rg-sa-p9-base-202100265, que la prueba de DR no toca.
+# Credenciales: workload identity (la identidad la crea la capa cluster/). El
+# Secret "cloud" solo contiene identificadores, ninguna llave ni contrasena.
 # ------------------------------------------------------------------------------
+
+data "azurerm_client_config" "actual" {}
+
+data "azurerm_user_assigned_identity" "velero" {
+  name                = "id-velero-sa-p9"
+  resource_group_name = var.grupo_cluster
+}
 
 resource "helm_release" "velero" {
   name       = "velero"
@@ -113,56 +128,77 @@ resource "helm_release" "velero" {
   timeout = 600
 
   values = [yamlencode({
-    # El plugin de AWS se versiona junto con Velero (1.18.x <-> 1.14.x).
+    # El plugin de Azure se versiona junto con Velero (1.18.x <-> 1.14.x).
     initContainers = [{
-      name            = "velero-plugin-for-aws"
-      image           = "velero/velero-plugin-for-aws:v1.14.3"
+      name            = "velero-plugin-for-microsoft-azure"
+      image           = "velero/velero-plugin-for-microsoft-azure:v1.14.3"
       imagePullPolicy = "IfNotPresent"
       volumeMounts    = [{ mountPath = "/target", name = "plugins" }]
     }]
 
-    credentials = { useSecret = false }
+    # Etiqueta que activa la inyeccion del token de workload identity.
+    podLabels = { "azure.workload.identity/use" = "true" }
 
     serviceAccount = {
       server = {
         create = true
         name   = "velero-server"
         annotations = {
-          "eks.amazonaws.com/role-arn" = "arn:aws:iam::${data.aws_caller_identity.actual.account_id}:role/${var.nombre_cluster}-velero"
+          "azure.workload.identity/client-id" = data.azurerm_user_assigned_identity.velero.client_id
         }
+      }
+    }
+
+    credentials = {
+      useSecret = true
+      secretContents = {
+        cloud = join("\n", [
+          "AZURE_SUBSCRIPTION_ID=${data.azurerm_client_config.actual.subscription_id}",
+          "AZURE_RESOURCE_GROUP=${data.azurerm_kubernetes_cluster.este.node_resource_group}",
+          "AZURE_CLOUD_NAME=AzurePublicCloud",
+          "AZURE_CLIENT_ID=${data.azurerm_user_assigned_identity.velero.client_id}",
+          "",
+        ])
       }
     }
 
     configuration = {
       backupStorageLocation = [{
         name     = "default"
-        provider = "aws"
-        bucket   = var.bucket_respaldos
+        provider = "azure"
+        bucket   = "velero"
         default  = true
-        config   = { region = var.region }
+        config = {
+          resourceGroup  = var.grupo_base
+          storageAccount = var.cuenta_respaldos
+          subscriptionId = data.azurerm_client_config.actual.subscription_id
+          useAAD         = "true"
+        }
       }]
       volumeSnapshotLocation = [{
         name     = "default"
-        provider = "aws"
-        config   = { region = var.region }
+        provider = "azure"
+        config = {
+          # Los snapshots se crean en el grupo base: sobreviven al cluster.
+          resourceGroup  = var.grupo_base
+          subscriptionId = data.azurerm_client_config.actual.subscription_id
+          incremental    = "true"
+        }
       }]
     }
 
     # El schedule no se declara aqui: vive en el repositorio GitOps
-    # (platform/velero/) y lo aplica ArgoCD, igual que el resto de la
-    # configuracion de la aplicacion.
+    # (platform/velero/) y lo aplica ArgoCD.
     schedules        = {}
     snapshotsEnabled = true
     deployNodeAgent  = false
 
     resources = {
-      requests = { cpu = "100m", memory = "128Mi" }
+      requests = { cpu = "50m", memory = "128Mi" }
       limits   = { cpu = "500m", memory = "512Mi" }
     }
   })]
 }
-
-data "aws_caller_identity" "actual" {}
 
 # ------------------------------------------------------------------------------
 # 4. ArgoCD

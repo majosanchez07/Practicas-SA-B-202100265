@@ -1,48 +1,24 @@
-# ==============================================================================
-# Salidas de la capa de cluster
-#
-# Son la interfaz con el resto de la practica: la capa platform/ las consulta y
-# el estudiante las usa para configurar kubectl.
-# ==============================================================================
-
 output "nombre_cluster" {
-  description = "Nombre del cluster EKS."
-  value       = module.eks.cluster_name
+  description = "Nombre del cluster AKS."
+  value       = azurerm_kubernetes_cluster.este.name
 }
 
-output "region" {
-  description = "Region donde vive el cluster."
-  value       = var.region
+output "grupo_cluster" {
+  description = "Grupo de recursos del cluster."
+  value       = azurerm_resource_group.cluster.name
 }
 
-output "endpoint" {
-  description = "Endpoint del servidor de la API de Kubernetes."
-  value       = module.eks.cluster_endpoint
+output "grupo_nodos" {
+  description = "Grupo de recursos de los nodos y discos (donde Velero restaura)."
+  value       = azurerm_kubernetes_cluster.este.node_resource_group
 }
 
-output "version_kubernetes" {
-  description = "Version del plano de control efectivamente desplegada."
-  value       = module.eks.cluster_version
+output "velero_client_id" {
+  description = "Client ID de la identidad de Velero (anotacion del ServiceAccount)."
+  value       = azurerm_user_assigned_identity.velero.client_id
 }
 
-output "oidc_provider_arn" {
-  description = "ARN del proveedor OIDC; lo necesita cualquier rol IRSA posterior."
-  value       = module.eks.oidc_provider_arn
-}
-
-output "vpc_id" {
-  description = "Identificador de la VPC creada."
-  value       = module.vpc.vpc_id
-}
-
-# El comando exacto para apuntar kubectl a este cluster. Se emite como salida
-# para que quede en la evidencia y nadie tenga que recordar la sintaxis.
 output "comando_kubeconfig" {
-  description = "Comando que configura kubectl contra este cluster."
-  value       = "aws eks update-kubeconfig --region ${var.region} --name ${module.eks.cluster_name}"
-}
-
-output "rol_velero" {
-  description = "ARN del rol IAM que asume el ServiceAccount de Velero."
-  value       = module.irsa_velero.iam_role_arn
+  description = "Comando para configurar kubectl."
+  value       = "az aks get-credentials -g ${azurerm_resource_group.cluster.name} -n ${azurerm_kubernetes_cluster.este.name} --overwrite-existing"
 }

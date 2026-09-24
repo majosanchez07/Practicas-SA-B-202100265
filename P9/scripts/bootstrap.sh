@@ -5,12 +5,13 @@
 # Practica 9 - Maria Jose Tebalan Sanchez - 202100265
 #
 # Uso:   ./P9/scripts/bootstrap.sh
-# Requiere: credenciales de AWS de la cuenta, terraform, kubectl, velero, jq.
+# Requiere: sesion de Azure CLI (az login) en la suscripcion, terraform,
+#           kubectl, velero, jq.
 #
 # Orden (ver docs/diagrama-bootstrap.md):
-#   1. Terraform cluster/  -> VPC, EKS, nodos, roles IRSA (EBS CSI, Velero)
+#   1. Terraform cluster/  -> grupo, AKS, nodos, identidad de Velero
 #   2. Terraform platform/ -> namespaces, cuotas, RBAC, StorageClass,
-#                             llave de Sealed Secrets (desde Secrets Manager),
+#                             llave de Sealed Secrets (desde Key Vault),
 #                             Sealed Secrets, Velero, ArgoCD
 #   3. Velero              -> restaura los volumenes del ultimo respaldo
 #   4. Terraform platform/ -> aplicacion raiz (app-of-apps)
@@ -25,20 +26,21 @@ source "$(dirname "$0")/comun.sh"
 mkdir -p "$EVID/reconstruccion"
 REG="$EVID/reconstruccion/registro-$(date -u +%Y%m%dT%H%M%SZ).log"
 T0=$(epoch)
-log "$REG" "INICIO bootstrap (operador: $(aws sts get-caller-identity --query Arn --output text))"
+export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
+log "$REG" "INICIO bootstrap (operador: $(az account show --query user.name -o tsv), suscripcion $ARM_SUBSCRIPTION_ID)"
 
 # --- 0. Prerrequisitos que viven fuera del cluster ----------------------------
-aws s3api head-bucket --bucket "$BUCKET_ESTADO"
-aws s3api head-bucket --bucket "$BUCKET_VELERO"
-aws secretsmanager describe-secret --secret-id "$SECRETO_LLAVE" --region "$REGION" >/dev/null
-log "$REG" "PASO 0 OK: backend remoto, bucket de respaldos y llave externa disponibles"
+az storage account show -n "$SA_ESTADO" -g "$RG_BASE" -o none
+az storage account show -n "$SA_VELERO" -g "$RG_BASE" -o none
+az keyvault secret show --vault-name "$KEYVAULT" -n "$SECRETO_LLAVE" --query id -o none
+log "$REG" "PASO 0 OK: estado remoto, almacenamiento de respaldos y llave externa disponibles en $RG_BASE"
 
 # --- 1. Cluster ----------------------------------------------------------------
 terraform -chdir="$P9/terraform/cluster" init -input=false -reconfigure >/dev/null
 terraform -chdir="$P9/terraform/cluster" apply -input=false -auto-approve
-aws eks update-kubeconfig --region "$REGION" --name "$CLUSTER" >/dev/null
+az aks get-credentials -g "$RG_CLUSTER" -n "$CLUSTER" --overwrite-existing >/dev/null
 kubectl wait --for=condition=Ready nodes --all --timeout=600s
-log "$REG" "PASO 1 OK: cluster EKS y nodos listos ($(kubectl get nodes --no-headers | wc -l) nodos)"
+log "$REG" "PASO 1 OK: cluster AKS y nodos listos ($(kubectl get nodes --no-headers | wc -l) nodos)"
 
 # --- 2. Plataforma sin la aplicacion raiz ------------------------------------
 terraform -chdir="$P9/terraform/platform" init -input=false -reconfigure >/dev/null

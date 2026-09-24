@@ -8,21 +8,22 @@ variable "carne" {
   default     = "202100265"
 }
 
-variable "region" {
-  description = "Region de AWS donde vive el cluster."
+variable "nombre_cluster" {
+  description = "Nombre del cluster AKS (salida nombre_cluster de la capa cluster/)."
   type        = string
-  default     = "us-east-2"
+  default     = "aks-sa-p9-202100265"
 }
 
-variable "nombre_cluster" {
-  description = <<-DESC
-    Nombre del cluster EKS sobre el que se aplica esta capa.
-
-    Debe coincidir con la salida nombre_cluster de la capa cluster/:
-      terraform -chdir=../cluster output -raw nombre_cluster
-  DESC
+variable "grupo_cluster" {
+  description = "Grupo de recursos del cluster (salida grupo_cluster de la capa cluster/)."
   type        = string
-  default     = "sa-p8-202100265"
+  default     = "rg-sa-p9-202100265"
+}
+
+variable "grupo_base" {
+  description = "Grupo que sobrevive al desastre: estado, respaldos y Key Vault."
+  type        = string
+  default     = "rg-sa-p9-base-202100265"
 }
 
 variable "namespace_app" {
@@ -94,16 +95,22 @@ variable "limites" {
 # Continuidad operativa (Practica 9)
 # ------------------------------------------------------------------------------
 
-variable "secreto_llave_sealed" {
-  description = "Nombre del secreto de AWS Secrets Manager con la llave de Sealed Secrets (JSON con tls.crt y tls.key en base64)."
+variable "key_vault" {
+  description = "Key Vault (grupo base) con la llave de Sealed Secrets."
   type        = string
-  default     = "sa-p9/sealed-secrets-key"
+  default     = "kv-sa-p9-202100265"
 }
 
-variable "bucket_respaldos" {
-  description = "Bucket de S3, externo al cluster, donde Velero guarda los respaldos."
+variable "secreto_llave_sealed" {
+  description = "Secreto del Key Vault con la llave de Sealed Secrets (JSON con tls.crt y tls.key en base64)."
   type        = string
-  default     = "sa-p9-velero-202100265"
+  default     = "sealed-secrets-key"
+}
+
+variable "cuenta_respaldos" {
+  description = "Cuenta de almacenamiento, externa al cluster, donde Velero guarda los respaldos (contenedor velero)."
+  type        = string
+  default     = "sap9velero202100265"
 }
 
 variable "repo_gitops" {

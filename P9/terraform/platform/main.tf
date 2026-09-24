@@ -30,9 +30,9 @@ terraform {
   required_version = ">= 1.5"
 
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 4.14"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -45,46 +45,49 @@ terraform {
   }
 
   # Estado remoto con bloqueo (ver la explicacion en ../cluster/main.tf).
-  backend "s3" {
-    bucket         = "sa-p9-tfstate-202100265"
-    key            = "platform/terraform.tfstate"
-    region         = "us-east-2"
-    dynamodb_table = "sa-p9-tfstate-lock"
-    encrypt        = true
+  backend "azurerm" {
+    resource_group_name  = "rg-sa-p9-base-202100265"
+    storage_account_name = "sap9tfstate202100265"
+    container_name       = "tfstate"
+    key                  = "platform/terraform.tfstate"
+    use_azuread_auth     = true
   }
 }
 
-provider "aws" {
-  region = var.region
+provider "azurerm" {
+  features {}
 }
 
 # ------------------------------------------------------------------------------
 # Conexion con el cluster creado por la capa anterior
 #
-# Se consulta por nombre en lugar de leer el estado de la otra capa: asi esta
-# capa funciona aunque el estado de cluster/ viva en otra maquina, y deja claro
-# que la unica dependencia es el nombre del cluster.
+# Se consulta por nombre en lugar de leer el estado de la otra capa: la unica
+# dependencia entre ambas es el nombre del cluster, y queda explicita.
 # ------------------------------------------------------------------------------
 
-data "aws_eks_cluster" "este" {
-  name = var.nombre_cluster
+data "azurerm_kubernetes_cluster" "este" {
+  name                = var.nombre_cluster
+  resource_group_name = var.grupo_cluster
 }
 
-data "aws_eks_cluster_auth" "este" {
-  name = var.nombre_cluster
+locals {
+  # Si el cluster no expone credenciales de administrador, se usa la del usuario.
+  kube_cfg = length(data.azurerm_kubernetes_cluster.este.kube_admin_config) > 0 ? data.azurerm_kubernetes_cluster.este.kube_admin_config[0] : data.azurerm_kubernetes_cluster.este.kube_config[0]
 }
 
 provider "kubernetes" {
-  host                   = data.aws_eks_cluster.este.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.este.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.este.token
+  host                   = local.kube_cfg.host
+  client_certificate     = base64decode(local.kube_cfg.client_certificate)
+  client_key             = base64decode(local.kube_cfg.client_key)
+  cluster_ca_certificate = base64decode(local.kube_cfg.cluster_ca_certificate)
 }
 
 provider "helm" {
   kubernetes {
-    host                   = data.aws_eks_cluster.este.endpoint
-    cluster_ca_certificate = base64decode(data.aws_eks_cluster.este.certificate_authority[0].data)
-    token                  = data.aws_eks_cluster_auth.este.token
+    host                   = local.kube_cfg.host
+    client_certificate     = base64decode(local.kube_cfg.client_certificate)
+    client_key             = base64decode(local.kube_cfg.client_key)
+    cluster_ca_certificate = base64decode(local.kube_cfg.cluster_ca_certificate)
   }
 }
 
@@ -377,36 +380,7 @@ resource "kubernetes_role" "auditor" {
 # ------------------------------------------------------------------------------
 # Clase de almacenamiento
 #
-# El cluster trae por defecto una clase basada en el aprovisionador antiguo de
-# volumenes, que ya no es el que gestiona el controlador instalado. Sin una
-# clase que apunte al controlador vigente, las peticiones de volumen quedan en
-# espera indefinida y las cargas de trabajo con estado -la base de datos y el
-# intermediario de mensajes- no llegan a planificarse.
-#
-# Se declara aqui, junto al resto de la plataforma, y no a mano: el enunciado
-# exige que la infraestructura se declare, y una clase de almacenamiento creada
-# con un comando suelto seria exactamente el tipo de recurso no trazable que se
-# quiere evitar.
-#
-# WaitForFirstConsumer retrasa la creacion del volumen hasta que la carga de
-# trabajo tenga nodo asignado, de modo que el volumen se crea en la misma zona
-# de disponibilidad. Sin eso, un volumen puede quedar en una zona donde la
-# carga no cabe, y bloquearse.
+# En EKS (P8) habia que declarar la clase gp3 del driver EBS. AKS ya trae
+# managed-csi (driver disk.csi.azure.com, discos administrados), que es la que
+# usan los values de produccion y la que Velero sabe respaldar con snapshots.
 # ------------------------------------------------------------------------------
-
-resource "kubernetes_storage_class" "gp3" {
-  metadata {
-    name   = "gp3"
-    labels = local.etiquetas
-  }
-
-  storage_provisioner    = "ebs.csi.aws.com"
-  reclaim_policy         = "Delete"
-  volume_binding_mode    = "WaitForFirstConsumer"
-  allow_volume_expansion = true
-
-  parameters = {
-    type      = "gp3"
-    encrypted = "true"
-  }
-}

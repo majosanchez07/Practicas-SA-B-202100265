@@ -1,246 +1,162 @@
 # ==============================================================================
-# Capa 1 - El cluster EKS
+# Capa 1 - El cluster AKS
 #
 # Practica 9 - Maria Jose Tebalan Sanchez - 202100265
 #
-# Esta capa crea la infraestructura de AWS: la red, el plano de control de EKS
-# y el grupo de nodos. En la Practica 6 lo mismo se hacia con "eksctl create
-# cluster", un comando imperativo cuyo resultado no queda declarado en ninguna
-# parte. Aqui el cluster es codigo: lo que dice este archivo es lo que existe,
-# terraform plan muestra cualquier diferencia y terraform destroy lo revierte
-# por completo.
+# La Practica 8 corria en EKS (AWS). La Practica 9 se traslada a Azure (AKS),
+# en la region centralus: distinta de la del proyecto (eastus / eastus2), de
+# modo que la prueba de desastre nunca puede tocar sus recursos y cada uno
+# dispone de su propia cuota regional de vCPU.
 #
-# Por que dos capas separadas (cluster/ y platform/)
-# --------------------------------------------------
-# Terraform resuelve los providers al comenzar el plan, antes de crear nada.
-# Si los recursos de Kubernetes vivieran en este mismo estado, el provider
-# kubernetes tendria que apuntar a un endpoint que todavia no existe durante el
-# primer apply, y el plan fallaria. Separarlas hace que cada capa tenga un
-# unico proveedor con sus datos ya disponibles:
+# Que vive aqui y que no
+# ----------------------
+# Esta capa crea SOLO lo que la prueba de DR destruye y reconstruye:
+#   - grupo rg-sa-p9-202100265, el cluster AKS y su grupo de nodos
+#   - la identidad administrada de Velero y sus permisos
 #
-#   cluster/   -> provider aws        -> crea el EKS
-#   platform/  -> provider kubernetes -> namespaces, cuotas, limites y RBAC
-#
-# La segunda lee la salida de la primera con un data source, de modo que la
-# dependencia entre ambas es explicita y no una coincidencia de nombres.
+# Lo que tiene que sobrevivir al desastre vive en rg-sa-p9-base-202100265 y lo
+# crea scripts/crear-backend.sh, fuera de este estado: el estado de Terraform,
+# el almacenamiento de respaldos y el Key Vault con la llave de Sealed Secrets.
+# Si vivieran aqui, un terraform destroy se llevaria tambien los respaldos
+# (el caso de Code Spaces, 2014, visto en clase).
 # ==============================================================================
 
 terraform {
   required_version = ">= 1.5"
 
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 4.14"
     }
   }
 
-  # Practica 9: el estado ya no vive en la maquina del estudiante. Reside en
-  # S3 (versionado y cifrado) y el bloqueo lo da una tabla de DynamoDB, de modo
-  # que dos operadores no pueden aplicar a la vez y cualquier persona con
-  # credenciales de la cuenta puede reconstruir la infraestructura desde otro
-  # equipo. El bucket y la tabla los crea P9/scripts/crear-backend.sh, una sola
-  # vez: el backend no puede declararse dentro del mismo estado que guarda.
-  backend "s3" {
-    bucket         = "sa-p9-tfstate-202100265"
-    key            = "cluster/terraform.tfstate"
-    region         = "us-east-2"
-    dynamodb_table = "sa-p9-tfstate-lock"
-    encrypt        = true
+  # Estado remoto. El backend azurerm bloquea el estado con un lease sobre el
+  # blob: dos operadores no pueden aplicar a la vez. Cualquier persona con
+  # acceso a la suscripcion puede reconstruir desde otro equipo.
+  backend "azurerm" {
+    resource_group_name  = "rg-sa-p9-base-202100265"
+    storage_account_name = "sap9tfstate202100265"
+    container_name       = "tfstate"
+    key                  = "cluster/terraform.tfstate"
+    use_azuread_auth     = true
   }
 }
 
-provider "aws" {
-  region = var.region
-
-  default_tags {
-    tags = {
-      Practica  = "P9"
-      Carne     = var.carne
-      Curso     = "Software Avanzado B"
-      ManagedBy = "Terraform"
+provider "azurerm" {
+  features {
+    resource_group {
+      # El grupo del cluster se destruye completo en la prueba de DR.
+      prevent_deletion_if_contains_resources = false
     }
   }
 }
 
-# ------------------------------------------------------------------------------
-# Datos del entorno
-# ------------------------------------------------------------------------------
+data "azurerm_client_config" "actual" {}
 
-# Las zonas de disponibilidad no se escriben a mano: se consultan. Asi el
-# codigo funciona en cualquier region sin editarlo.
-data "aws_availability_zones" "disponibles" {
-  state = "available"
-
-  filter {
-    name   = "opt-in-status"
-    values = ["opt-in-not-required"]
-  }
+data "azurerm_resource_group" "base" {
+  name = var.grupo_base
 }
 
 locals {
-  nombre = "sa-p8-${var.carne}"
-
-  # Dos zonas: EKS exige un minimo de dos para el plano de control, y con dos
-  # basta para esta practica. Mas zonas multiplicarian los NAT Gateway, que son
-  # el renglon mas caro de la factura.
-  azs = slice(data.aws_availability_zones.disponibles.names, 0, 2)
-}
-
-# ------------------------------------------------------------------------------
-# Red
-#
-# Se usa el modulo oficial de la comunidad en lugar de declarar a mano la VPC,
-# las subredes, las tablas de rutas y el gateway: son cerca de treinta recursos
-# cuya unica particularidad son las etiquetas que EKS necesita para descubrir
-# donde colocar los balanceadores.
-# ------------------------------------------------------------------------------
-
-module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.13"
-
-  name = "${local.nombre}-vpc"
-  cidr = "10.0.0.0/16"
-
-  azs = local.azs
-  # Subredes publicas: alojan el balanceador de entrada.
-  public_subnets = ["10.0.0.0/20", "10.0.16.0/20"]
-  # Subredes privadas: alojan los nodos. Los pods no son alcanzables desde
-  # Internet salvo a traves del balanceador.
-  private_subnets = ["10.0.128.0/20", "10.0.144.0/20"]
-
-  # Un solo NAT Gateway compartido por ambas zonas en lugar de uno por zona.
-  # Sacrifica tolerancia a la caida de una zona -algo irrelevante en una
-  # practica- y ahorra unos 32 USD al mes.
-  enable_nat_gateway     = true
-  single_nat_gateway     = true
-  one_nat_gateway_per_az = false
-
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-
-  # Estas dos etiquetas no son decorativas: el controlador de balanceadores de
-  # AWS las busca para decidir en que subredes puede crear un Load Balancer.
-  # Sin ellas, un Service de tipo LoadBalancer se queda en estado <pending>.
-  public_subnet_tags = {
-    "kubernetes.io/role/elb"                = "1"
-    "kubernetes.io/cluster/${local.nombre}" = "shared"
-  }
-
-  private_subnet_tags = {
-    "kubernetes.io/role/internal-elb"       = "1"
-    "kubernetes.io/cluster/${local.nombre}" = "shared"
+  nombre = "aks-sa-p9-${var.carne}"
+  etiquetas = {
+    practica  = "p9"
+    carne     = var.carne
+    curso     = "software-avanzado-b"
+    managedby = "terraform"
   }
 }
 
-# ------------------------------------------------------------------------------
-# Cluster EKS
-# ------------------------------------------------------------------------------
-
-module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.31"
-
-  cluster_name    = local.nombre
-  cluster_version = var.version_kubernetes
-
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnets
-
-  # El endpoint publico permite administrar el cluster desde la maquina del
-  # estudiante sin montar una VPN ni un bastion. El acceso sigue exigiendo
-  # credenciales de AWS y autorizacion por RBAC.
-  cluster_endpoint_public_access = true
-
-  # Quien ejecuta terraform apply queda como administrador del cluster. Sin
-  # esto habria que editar a mano el aws-auth ConfigMap despues de crearlo, que
-  # es justamente el tipo de paso manual que la practica prohibe.
-  enable_cluster_creator_admin_permissions = true
-
-  # Addons gestionados por AWS. El driver de EBS es imprescindible: sin el, los
-  # PersistentVolumeClaim de PostgreSQL y RabbitMQ se quedan en Pending para
-  # siempre, tal como se documento en la Practica 6.
-  cluster_addons = {
-    coredns    = { most_recent = true }
-    kube-proxy = { most_recent = true }
-    vpc-cni    = { most_recent = true }
-    aws-ebs-csi-driver = {
-      most_recent              = true
-      service_account_role_arn = module.irsa_ebs_csi.iam_role_arn
-    }
-  }
-
-  eks_managed_node_groups = {
-    workers = {
-      min_size     = var.nodos_min
-      max_size     = var.nodos_max
-      desired_size = var.nodos
-
-      instance_types = [var.tipo_nodo]
-      capacity_type  = "ON_DEMAND"
-
-      disk_size = 20
-
-      labels = {
-        rol = "workers"
-      }
-    }
-  }
-
-  tags = {
-    Practica = "P9"
-  }
+resource "azurerm_resource_group" "cluster" {
+  name     = "rg-sa-p9-${var.carne}"
+  location = var.region
+  tags     = local.etiquetas
 }
 
 # ------------------------------------------------------------------------------
-# Rol IAM para el driver CSI de EBS (IRSA)
-#
-# IRSA asocia un ServiceAccount de Kubernetes con un rol de IAM a traves del
-# proveedor OIDC del cluster. Es el mecanismo que permite que un pod tenga
-# permisos de AWS sin credenciales estaticas dentro de la imagen.
+# Cluster AKS
 # ------------------------------------------------------------------------------
 
-module "irsa_ebs_csi" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.48"
+resource "azurerm_kubernetes_cluster" "este" {
+  name                = local.nombre
+  location            = azurerm_resource_group.cluster.location
+  resource_group_name = azurerm_resource_group.cluster.name
+  dns_prefix          = local.nombre
+  kubernetes_version  = var.version_kubernetes
 
-  role_name             = "${local.nombre}-ebs-csi"
-  attach_ebs_csi_policy = true
+  # Nombre fijo del grupo de nodos: Velero crea ahi los discos restaurados y
+  # su identidad necesita permisos sobre el. Con el nombre automatico (MC_...)
+  # habria que descubrirlo despues de crear el cluster.
+  node_resource_group = "rg-sa-p9-nodos-${var.carne}"
 
-  oidc_providers = {
-    principal = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["kube-system:ebs-csi-controller-sa"]
+  # Workload identity: los pods obtienen identidad de Azure a traves del
+  # emisor OIDC del cluster, sin secretos estaticos. Es el equivalente de IRSA.
+  oidc_issuer_enabled       = true
+  workload_identity_enabled = true
+
+  default_node_pool {
+    name       = "workers"
+    vm_size    = var.tipo_nodo
+    node_count = var.nodos
+    # Dos nodos: el minimo para que el drenaje de uno deje replicas vivas.
+    # La cuota de la region es de 4 vCPU; 2 x Standard_D2s_v5 la ocupan justa.
+    os_disk_size_gb = 64
+    node_labels     = { rol = "workers" }
+
+    upgrade_settings {
+      max_surge = "10%"
     }
   }
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  tags = local.etiquetas
 }
 
 # ------------------------------------------------------------------------------
-# Rol IAM para Velero (IRSA) - Practica 9
+# Identidad de Velero (workload identity)
 #
-# Velero escribe los respaldos en un bucket de S3 y toma snapshots de los
-# volumenes EBS. Ambos destinos viven fuera del cluster: si el cluster se
-# destruye, los respaldos sobreviven. El permiso llega por IRSA, sin llaves de
-# acceso estaticas dentro del cluster ni en el repositorio.
-#
-# El bucket NO se declara aqui: si viviera en este estado, un terraform destroy
-# del cluster se llevaria tambien los respaldos, que es exactamente el fallo de
-# Code Spaces (2014) visto en clase. Lo crea crear-backend.sh.
+# Velero escribe los respaldos en la cuenta sap9velero202100265 y crea
+# snapshots de los discos en el grupo base (fuera del cluster). Al restaurar,
+# crea discos en el grupo de nodos. Esos son exactamente sus permisos.
 # ------------------------------------------------------------------------------
 
-module "irsa_velero" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.48"
+resource "azurerm_user_assigned_identity" "velero" {
+  name                = "id-velero-sa-p9"
+  location            = azurerm_resource_group.cluster.location
+  resource_group_name = azurerm_resource_group.cluster.name
+  tags                = local.etiquetas
+}
 
-  role_name             = "${local.nombre}-velero"
-  attach_velero_policy  = true
-  velero_s3_bucket_arns = ["arn:aws:s3:::${var.bucket_respaldos}"]
+resource "azurerm_federated_identity_credential" "velero" {
+  name                = "velero-server"
+  resource_group_name = azurerm_resource_group.cluster.name
+  parent_id           = azurerm_user_assigned_identity.velero.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = azurerm_kubernetes_cluster.este.oidc_issuer_url
+  subject             = "system:serviceaccount:velero:velero-server"
+}
 
-  oidc_providers = {
-    principal = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["velero:velero-server"]
-    }
-  }
+# Snapshots de disco en el grupo base y lectura de su cuenta de almacenamiento.
+resource "azurerm_role_assignment" "velero_base" {
+  scope                = data.azurerm_resource_group.base.id
+  role_definition_name = "Contributor"
+  principal_id         = azurerm_user_assigned_identity.velero.principal_id
+}
+
+# Escritura de blobs de respaldo con Azure AD (sin llaves de la cuenta).
+resource "azurerm_role_assignment" "velero_blobs" {
+  scope                = data.azurerm_resource_group.base.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.velero.principal_id
+}
+
+# Discos del cluster: leerlos para el snapshot y crearlos al restaurar.
+resource "azurerm_role_assignment" "velero_nodos" {
+  scope                = "/subscriptions/${data.azurerm_client_config.actual.subscription_id}/resourceGroups/${azurerm_kubernetes_cluster.este.node_resource_group}"
+  role_definition_name = "Contributor"
+  principal_id         = azurerm_user_assigned_identity.velero.principal_id
 }

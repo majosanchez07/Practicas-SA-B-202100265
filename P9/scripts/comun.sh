@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# Variables y funciones compartidas por los scripts de la Practica 9.
+# Variables y funciones compartidas por los scripts de la Practica 9 (Azure).
 # Practica 9 - Maria Jose Tebalan Sanchez - 202100265
 set -euo pipefail
 
 RAIZ_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 P9="$RAIZ_REPO/P9"
-REGION="us-east-2"
-CLUSTER="sa-p8-202100265"          # nombre heredado de la P8: SealedSecrets y values lo referencian
-NS_APP="sa-p8"
-BUCKET_ESTADO="sa-p9-tfstate-202100265"
-TABLA_BLOQUEO="sa-p9-tfstate-lock"
-BUCKET_VELERO="sa-p9-velero-202100265"
-SECRETO_LLAVE="sa-p9/sealed-secrets-key"
+REGION="centralus"                      # region distinta de la del proyecto (eastus / eastus2)
+RG_BASE="rg-sa-p9-base-202100265"       # lo que sobrevive al desastre: estado, respaldos, llave
+RG_CLUSTER="rg-sa-p9-202100265"         # lo que se destruye y se reconstruye
+CLUSTER="aks-sa-p9-202100265"
+SA_ESTADO="sap9tfstate202100265"
+SA_VELERO="sap9velero202100265"
+KEYVAULT="kv-sa-p9-202100265"
+SECRETO_LLAVE="sealed-secrets-key"
+NS_APP="sa-p8"                          # namespace heredado de la P8 (chart y SealedSecrets lo usan)
 SCHEDULE="respaldo-sa-p9"
 APP_RAIZ="raiz-sa-p9"
 EVID="$P9/docs/evidencias"
