@@ -20,8 +20,14 @@ log "$REG" "=== PRUEBA DE PERDIDA DE NODO ==="
 kubectl get pdb -n "$NS_APP" | tee -a "$REG"
 kubectl get pods -n "$NS_APP" -o wide --no-headers | awk '{print $1, $7}' | tee -a "$REG"
 
-NODO=$(kubectl get pods -n "$NS_APP" -o jsonpath='{range .items[*]}{.spec.nodeName}{"\n"}{end}' | sort | uniq -c | sort -rn | head -1 | awk '{print $2}')
-log "$REG" "Nodo a drenar (el que aloja mas pods): $NODO"
+# Se drena el nodo que NO aloja a PostgreSQL: la base y el broker tienen una
+# sola replica y estan declarados fuera del objetivo de perdida de nodo
+# (docs/rto-rpo-declarados.md). El primer intento, sobre el nodo de la base,
+# se documenta en el informe como punto unico de fallo.
+NODO_BD=$(kubectl -n "$NS_APP" get pod sa-platform-postgresql-0 -o jsonpath='{.spec.nodeName}')
+NODO=$(kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep -v "^$NODO_BD$" | head -1)
+log "$REG" "Nodo de PostgreSQL (se conserva): $NODO_BD"
+log "$REG" "Nodo a drenar: $NODO ($(kubectl get pods -n "$NS_APP" --field-selector spec.nodeName="$NODO" --no-headers | wc -l) pods de la aplicacion)"
 
 kubectl delete pod sonda-dr -n default --ignore-not-found >/dev/null
 kubectl run sonda-dr -n default --image=curlimages/curl:8.10.1 --restart=Never \
