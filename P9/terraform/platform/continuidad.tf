@@ -219,6 +219,18 @@ resource "helm_release" "argocd" {
     value = "true"
   }
 
+  # Seguimiento por anotacion, no por etiqueta. Con el seguimiento por
+  # etiqueta, los Backup que Velero crea desde el Schedule heredan la etiqueta
+  # app.kubernetes.io/instance=respaldos-velero; ArgoCD los toma como recursos
+  # sobrantes de esa aplicacion y, con prune activo, los borra en el acto.
+  # Hallado en la primera prueba de respaldo: el Backup desaparecia antes de
+  # empezar ("not found"). Velero no copia anotaciones, asi que con este modo
+  # sus objetos quedan fuera del alcance de ArgoCD.
+  set {
+    name  = "configs.cm.application\\.resourceTrackingMethod"
+    value = "annotation"
+  }
+
   depends_on = [helm_release.sealed_secrets]
 }
 

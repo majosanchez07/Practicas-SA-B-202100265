@@ -100,7 +100,7 @@ resource "azurerm_kubernetes_cluster" "este" {
     vm_size    = var.tipo_nodo
     node_count = var.nodos
     # Dos nodos: el minimo para que el drenaje de uno deje replicas vivas.
-    # La cuota de la region es de 4 vCPU; 2 x Standard_D2s_v5 la ocupan justa.
+    # La cuota de la region es de 4 vCPU; 2 x Standard_D2s_v7 la ocupan justa.
     os_disk_size_gb = 64
     node_labels     = { rol = "workers" }
 

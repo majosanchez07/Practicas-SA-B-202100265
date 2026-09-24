@@ -27,9 +27,9 @@ variable "version_kubernetes" {
 }
 
 variable "tipo_nodo" {
-  description = "Tamano de VM de los nodos. 2 vCPU / 8 GiB; dos nodos caben en la cuota regional de 4 vCPU."
+  description = "Tamano de VM de los nodos. 2 vCPU / 8 GiB (Dsv7; Dsv5 no esta permitido en la suscripcion); dos nodos caben en la cuota regional de 4 vCPU."
   type        = string
-  default     = "Standard_D2s_v5"
+  default     = "Standard_D2s_v7"
 }
 
 variable "nodos" {
