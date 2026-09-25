@@ -20,7 +20,7 @@ datos y los secretos intactos y con los tiempos medidos.
 | Restauración de datos | Capturas [12](docs/evidencias/capturas/12-restauracion-1-marcas-y-respaldo.png) · [13](docs/evidencias/capturas/13-restauracion-2-borrado-y-desastre.png) · [14](docs/evidencias/capturas/14-restauracion-3-restauracion.png) · [15](docs/evidencias/capturas/15-restauracion-4-verificacion-rpo.png) · registro [`prueba-datos-20260924T222531Z.log`](docs/evidencias/restauracion/prueba-datos-20260924T222531Z.log) |
 | Prueba de pérdida de nodo | Capturas [10](docs/evidencias/capturas/10-pdb-antiafinidad-probes.png) · [16](docs/evidencias/capturas/16-perdida-nodo-1-drenaje-en-curso.png) · [17](docs/evidencias/capturas/17-perdida-nodo-2-resultado.png) (125/125 HTTP 200) · registro [`drenaje-20260924T224739Z.log`](docs/evidencias/perdida-nodo/drenaje-20260924T224739Z.log) |
 | RTO y RPO declarados | Declarados: **RTO 45 min · RPO 30 min** ([rto-rpo-declarados.md](docs/rto-rpo-declarados.md)). Medidos en 2 ejecuciones: **RTO 15 min 20 s y 13 min 42 s · RPO 20 min 25 s y 6 min 3 s**. Detalle en [informe-prueba-dr.md](docs/informe-prueba-dr.md) |
-| Video demostrativo | _(URL)_. Minutaje en la [sección Video](#video-demostrativo) |
+| Video demostrativo | [https://drive.google.com/file/d/1pFQimwITNz6M1gIf95QmMejfEZyH1cgM/view?usp=sharing](https://drive.google.com/file/d/1pFQimwITNz6M1gIf95QmMejfEZyH1cgM/view?usp=sharing). Minutaje en la [sección Video](#video-demostrativo) |
 
 ## Documentos
 
@@ -76,14 +76,19 @@ git ls-files | grep -c tfstate                              # 0: no hay estado e
 
 ## Video demostrativo
 
-URL: _(pendiente)_
+URL: [https://drive.google.com/file/d/1pFQimwITNz6M1gIf95QmMejfEZyH1cgM/view?usp=sharing](https://drive.google.com/file/d/1pFQimwITNz6M1gIf95QmMejfEZyH1cgM/view?usp=sharing)
 
 | Minuto | Punto demostrado |
 |---|---|
-| 0:00 | Estado inicial: ArgoCD con `raiz-sa-p9` y sus hijas en Synced/Healthy; `velero backup get` |
-| 1:00 | Estado remoto: blobs del contenedor `tfstate` y el lease durante un `plan`; `git ls-files \| grep tfstate` vacío |
-| 1:45 | Restauración de datos: marca A, respaldo, marca B, borrado, restauración y verificación del contenido |
-| 3:30 | Pérdida de nodo: drenaje con la sonda respondiendo 200 |
-| 4:45 | Desastre: `desastre.sh` y la marca de destrucción |
-| 5:30 | `bootstrap.sh` (acelerado) hasta Synced/Healthy; secretos descifrados; datos presentes; RTO medido |
-| 7:00 | Flujo de la P8 intacto: rollout, políticas activas |
+| 0:00 | Introducción: el sistema de la P8 vuelto recuperable en AKS (`centralus`) |
+| 0:20 | Clúster AKS: 2 nodos, workload identity, grupo del clúster y grupo base |
+| 0:45 | Estado remoto de Terraform en Azure Blob; 0 archivos tfstate en el repositorio |
+| 1:10 | Bloqueo del estado: lease `locked` y un segundo `plan` rechazado |
+| 1:40 | App-of-apps: `raiz-sa-p9` y sus 6 hijas en olas de sincronización |
+| 2:30 | Respaldos con Velero: schedule cada 30 min, retención de 7 días, hook `pg_dump`, destino fuera del clúster |
+| 3:10 | Continuidad de los secretos: llave en Key Vault, huellas idénticas, secretos descifrados |
+| 3:40 | Restauración de datos verificada: marca A recuperada, marca B perdida, RPO |
+| 4:40 | Pérdida de nodo: PDB frenando el drenaje, 125/125 respuestas HTTP 200 |
+| 5:25 | Reconstrucción cronometrada: `desastre.sh` y `bootstrap.sh`, un solo punto de entrada |
+| 6:40 | RTO y RPO declarados contra medidos |
+| 7:10 | Flujo de la P8 intacto (políticas de Kyverno y rollout canary) y cierre |
