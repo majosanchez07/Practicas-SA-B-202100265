@@ -1,0 +1,6 @@
+2026-09-25T02:51:14Z | ESTADO PREVIO: ultimo respaldo completado = prueba-datos-20260925024512 @ 2026-09-25T02:45:23Z
+2026-09-25T02:51:15Z | ESTADO PREVIO: filas en cronjobs.ejecuciones = 136
+2026-09-25T02:51:16Z | ESTADO PREVIO: ultima fila = 2026-09-25 02:50:03.949336+00
+2026-09-25T02:51:16Z | DESASTRE: terraform destroy de la capa cluster (grupo rg-sa-p9-202100265: AKS, nodos, discos en uso, red, identidad de Velero)
+2026-09-25T02:57:22Z | DESASTRE COMPLETO: cluster destruido. Desde esta marca corre el RTO.
+2026-09-25T02:57:24Z | Sobrevive solo rg-sa-p9-base-202100265: 23 recursos (estado, respaldos, snapshots, Key Vault)

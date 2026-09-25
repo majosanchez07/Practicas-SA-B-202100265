@@ -1,5 +1,7 @@
 # Informe de la prueba de recuperación ante desastres
 
+> Evidencia visual: [capturas de terminal real](evidencias/capturas/INDICE-CAPTURAS.md) de cada prueba. Los `.log` son el registro con marcas de tiempo que generan los scripts.
+
 Práctica 9 · María José Tebalán Sánchez · 202100265 · Prueba ejecutada el 24/09/2026 (horas en UTC)
 
 ## 1. Objetivos declarados
@@ -50,6 +52,8 @@ Registros:
 
 La creación del clúster (7 min) fue el tramo más largo, como se previó. El resto (8 min) es plataforma más GitOps. El `bootstrap.sh` completo tardó 15 min 4 s, sin ningún paso manual.
 
+**Segunda ejecución, grabada en terminal** (25/09, [capturas 18–21 y 24](evidencias/capturas/INDICE-CAPTURAS.md#reconstrucción-completa-cronometrada-en-vivo)): la destrucción terminó a las 02:57:22 y el bootstrap cerró a las 03:11:04, así que el **RTO fue de 13 min 42 s**. El clúster tardó 6 min 20 s y el bootstrap completo 13 min 35 s. Registros: [`desastre-20260925T025113Z.log`](evidencias/reconstruccion/desastre-20260925T025113Z.log) y [`registro-20260925T025729Z.log`](evidencias/reconstruccion/registro-20260925T025729Z.log). Las dos ejecuciones dan valores consistentes (15:20 y 13:42).
+
 Otros tiempos medidos:
 - **Restauración de solo datos:** 60 s entre el `velero restore` y la base en línea.
 - **Pérdida de nodo:** el drenaje duró 1 min 22 s. La sonda obtuvo **121 de 121 peticiones con HTTP 200 (100 %)** ([`drenaje-20260924T224739Z.log`](evidencias/perdida-nodo/drenaje-20260924T224739Z.log), [`sondeo-20260924T224739Z.log`](evidencias/perdida-nodo/sondeo-20260924T224739Z.log)).
@@ -67,6 +71,7 @@ Otros tiempos medidos:
   - **RPO real: 20 min 25 s** (22:51:08 − 22:30:43), dentro de los 30 min declarados.
   - También volvieron las marcas `antes-del-respaldo-*` de `dr.verificacion`: la restauración trajo contenido real, no un volumen vacío.
   - Lo no recuperado son las ejecuciones del cronjob entre el respaldo de las 22:30 y el desastre. Se perdieron porque se escribieron después del último respaldo; ningún mecanismo las copia fuera del clúster antes del siguiente ciclo.
+- **Segunda ejecución:** el respaldo más reciente era el de las 02:45:13 y el desastre empezó a las 02:51:16, así que el **RPO fue de 6 min 3 s**. Se perdieron 2 de 136 filas; volvieron 134, la última de las 02:44:02 ([captura 24](evidencias/capturas/24-dr-5-sistema-recuperado.png)). El RPO depende de cuánto antes del desastre corrió el último respaldo; por eso el que se declara es el peor caso.
 - **Peor caso con el diseño actual:** 30 min más la duración del respaldo, es decir, el RPO declarado.
 
 ## 5. Puntos únicos de fallo detectados
@@ -81,9 +86,9 @@ Otros tiempos medidos:
 
 | Objetivo | Declarado | Medido | Brecha |
 |---|---|---|---|
-| RTO | 45 min | 15 min 20 s | −29 min 40 s: se cumplió con holgura. El objetivo se había dimensionado con los tiempos de EKS (15–20 min por clúster); AKS tardó 7 |
-| RPO | 30 min | 20 min 25 s (peor caso diseñado: 30 min) | Dentro del objetivo |
-| Pérdida de nodo | 0 fallos | 121/121 OK en el 2.º intento; el 1.º falló por capacidad | Cumplido después de corregir |
+| RTO | 45 min | 15 min 20 s y 13 min 42 s (2 ejecuciones) | −29 min 40 s en el peor caso: se cumplió con holgura. El objetivo se había dimensionado con los tiempos de EKS (15–20 min por clúster); AKS tardó 7 |
+| RPO | 30 min | 20 min 25 s y 6 min 3 s (peor caso diseñado: 30 min) | Dentro del objetivo |
+| Pérdida de nodo | 0 fallos | 121/121 y 125/125 con HTTP 200 después de la corrección; el 1.er intento falló por capacidad | Cumplido después de corregir |
 
 Qué haría para cerrar las brechas:
 1. **Réplica de PostgreSQL** (`architecture: replication`) o un servicio administrado (Azure Database for PostgreSQL) con PITR: bajaría el RPO a segundos y quitaría el punto único de fallo.

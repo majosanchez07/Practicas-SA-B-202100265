@@ -1,0 +1,126 @@
+2026-09-25T02:48:04Z | === PRUEBA DE PERDIDA DE NODO ===
+NAME                        MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
+sa-platform-api-gateway     1               N/A               1                     3h38m
+sa-platform-auth-service    1               N/A               1                     3h38m
+sa-platform-books-service   1               N/A               1                     3h38m
+sa-platform-loans-service   1               N/A               1                     3h38m
+sa-platform-postgresql      N/A             1                 1                     3h38m
+sa-platform-rabbitmq        N/A             1                 1                     3h38m
+sa-platform-api-gateway-65f6849c46-72k8q aks-workers-14913950-vmss000000
+sa-platform-api-gateway-65f6849c46-xrw5c aks-workers-14913950-vmss000001
+sa-platform-auth-service-559b7d64c5-6jbsr 3h37m
+sa-platform-auth-service-559b7d64c5-8bvjn 3h38m
+sa-platform-books-service-76d6b9cb7f-6z7zx 3h37m
+sa-platform-books-service-76d6b9cb7f-z9spp 3h38m
+sa-platform-cronjob-insert-29838402-wkc9b aks-workers-14913950-vmss000000
+sa-platform-cronjob-insert-29838404-66cb7 aks-workers-14913950-vmss000000
+sa-platform-cronjob-insert-29838408-k26q7 aks-workers-14913950-vmss000000
+sa-platform-cronjob-summary-29838400-9zvjq aks-workers-14913950-vmss000000
+sa-platform-loans-service-556fbf7cb5-cmtnw 3h38m
+sa-platform-loans-service-556fbf7cb5-fmrcv 3h37m
+sa-platform-notifications-service-88d8f9fc7-4mwlz 3h38m
+sa-platform-postgresql-0 aks-workers-14913950-vmss000000
+sa-platform-rabbitmq-0 aks-workers-14913950-vmss000000
+2026-09-25T02:48:07Z | Nodo de PostgreSQL (se conserva): aks-workers-14913950-vmss000000
+2026-09-25T02:48:07Z | Nodo a drenar: aks-workers-14913950-vmss000001 (4 pods de la aplicacion)
+2026-09-25T02:48:22Z | INICIO del drenaje de aks-workers-14913950-vmss000001
+node/aks-workers-14913950-vmss000001 cordoned
+Warning: ignoring DaemonSet-managed Pods: kube-system/azure-cns-cj7br, kube-system/azure-ip-masq-agent-8x82l, kube-system/cloud-node-manager-9zw9k, kube-system/csi-azuredisk-node-w98j8, kube-system/csi-azurefile-node-84btf, kube-system/kube-proxy-kk5px
+evicting pod sa-p8/sa-platform-loans-service-556fbf7cb5-fmrcv
+evicting pod kube-system/azure-wi-webhook-controller-manager-5d96fbd6f4-ckzm8
+evicting pod argo-rollouts/argo-rollouts-587969c458-b67dg
+evicting pod argo-rollouts/argo-rollouts-587969c458-78l46
+evicting pod argocd/argocd-application-controller-0
+evicting pod argocd/argocd-server-fd9b978b6-skvp9
+evicting pod kube-system/metrics-server-7d879dd58f-9x5fm
+evicting pod kyverno/kyverno-clean-reports-cprhg
+evicting pod sa-p8/sa-platform-api-gateway-65f6849c46-xrw5c
+evicting pod sa-p8/sa-platform-auth-service-559b7d64c5-6jbsr
+evicting pod sa-p8/sa-platform-books-service-76d6b9cb7f-6z7zx
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+evicting pod kube-system/coredns-674fb5d7b5-zmfdp
+evicting pod kube-system/azure-wi-webhook-controller-manager-5d96fbd6f4-hjhfx
+evicting pod kube-system/coredns-autoscaler-688ccdbc55-wx4wj
+evicting pod kube-system/coredns-674fb5d7b5-fqmq6
+evicting pod kube-system/konnectivity-agent-autoscaler-675746745-p6lsg
+error when evicting pods/"azure-wi-webhook-controller-manager-5d96fbd6f4-hjhfx" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+I0924 20:48:25.553023   45446 request.go:754] "Waited before sending request" delay="1.000169586s" reason="client-side throttling, not priority and fairness" verb="POST" URL="https://aks-sa-p9-202100265-th24ipe2.hcp.centralus.azmk8s.io:443/api/v1/namespaces/kube-system/pods/coredns-autoscaler-688ccdbc55-wx4wj/eviction"
+pod/kyverno-clean-reports-cprhg evicted
+error when evicting pods/"coredns-674fb5d7b5-fqmq6" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+pod/metrics-server-7d879dd58f-9x5fm evicted
+pod/argocd-server-fd9b978b6-skvp9 evicted
+pod/konnectivity-agent-autoscaler-675746745-p6lsg evicted
+pod/argo-rollouts-587969c458-b67dg evicted
+pod/coredns-autoscaler-688ccdbc55-wx4wj evicted
+pod/argo-rollouts-587969c458-78l46 evicted
+pod/argocd-application-controller-0 evicted
+pod/azure-wi-webhook-controller-manager-5d96fbd6f4-ckzm8 evicted
+evicting pod kube-system/azure-wi-webhook-controller-manager-5d96fbd6f4-hjhfx
+error when evicting pods/"azure-wi-webhook-controller-manager-5d96fbd6f4-hjhfx" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+pod/sa-platform-api-gateway-65f6849c46-xrw5c evicted
+pod/coredns-674fb5d7b5-zmfdp evicted
+evicting pod kube-system/coredns-674fb5d7b5-fqmq6
+error when evicting pods/"coredns-674fb5d7b5-fqmq6" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+pod/sa-platform-loans-service-556fbf7cb5-fmrcv evicted
+evicting pod kube-system/azure-wi-webhook-controller-manager-5d96fbd6f4-hjhfx
+error when evicting pods/"azure-wi-webhook-controller-manager-5d96fbd6f4-hjhfx" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/coredns-674fb5d7b5-fqmq6
+error when evicting pods/"coredns-674fb5d7b5-fqmq6" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/azure-wi-webhook-controller-manager-5d96fbd6f4-hjhfx
+error when evicting pods/"azure-wi-webhook-controller-manager-5d96fbd6f4-hjhfx" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/coredns-674fb5d7b5-fqmq6
+evicting pod kube-system/azure-wi-webhook-controller-manager-5d96fbd6f4-hjhfx
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+pod/azure-wi-webhook-controller-manager-5d96fbd6f4-hjhfx evicted
+pod/coredns-674fb5d7b5-fqmq6 evicted
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+pod/sa-platform-books-service-76d6b9cb7f-6z7zx evicted
+pod/sa-platform-auth-service-559b7d64c5-6jbsr evicted
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+error when evicting pods/"metrics-server-7d879dd58f-79467" -n "kube-system" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod kube-system/metrics-server-7d879dd58f-79467
+pod/metrics-server-7d879dd58f-79467 evicted
+node/aks-workers-14913950-vmss000001 drained
+2026-09-25T02:49:47Z | FIN del drenaje
+sa-platform-api-gateway-65f6849c46-72k8q Running aks-workers-14913950-vmss000000
+sa-platform-api-gateway-65f6849c46-zbjz8 Running aks-workers-14913950-vmss000000
+sa-platform-auth-service-559b7d64c5-8bvjn Running 3h40m
+sa-platform-auth-service-559b7d64c5-csxcn Running aks-workers-14913950-vmss000000
+sa-platform-books-service-76d6b9cb7f-72q6g Running aks-workers-14913950-vmss000000
+sa-platform-books-service-76d6b9cb7f-z9spp Running 3h40m
+sa-platform-cronjob-insert-29838404-66cb7 Completed aks-workers-14913950-vmss000000
+sa-platform-cronjob-insert-29838408-k26q7 Completed aks-workers-14913950-vmss000000
+sa-platform-cronjob-insert-29838410-k77zb Completed aks-workers-14913950-vmss000000
+sa-platform-cronjob-summary-29838410-scx2p Completed aks-workers-14913950-vmss000000
+sa-platform-loans-service-556fbf7cb5-cmtnw Running 3h40m
+sa-platform-loans-service-556fbf7cb5-vp5pf Running aks-workers-14913950-vmss000000
+sa-platform-notifications-service-88d8f9fc7-4mwlz Running 3h40m
+sa-platform-postgresql-0 Running aks-workers-14913950-vmss000000
+sa-platform-rabbitmq-0 Running aks-workers-14913950-vmss000000
+2026-09-25T02:50:18Z | Sondeo: 125 de 125 peticiones con HTTP 200 durante la prueba (100,00%)
+2026-09-25T02:50:20Z | Nodo aks-workers-14913950-vmss000001 devuelto al servicio (uncordon). Sondeo completo: /home/majo/Documentos/SA/Practicas-SA-B-202100265/P9/docs/evidencias/perdida-nodo/sondeo-20260925T024804Z.log
