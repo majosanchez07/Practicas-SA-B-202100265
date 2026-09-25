@@ -1,0 +1,74 @@
+================================================================
+ REVERSION AUTOMATICA ANTE UNA VERSION DEFECTUOSA
+ Practica 8 - Maria Jose Tebalan Sanchez - 202100265
+================================================================
+
+CRONOLOGIA REAL DEL INCIDENTE
+  07:26:56  Se publica la version defectuosa (1.0.2)
+  07:27:15  El controlador inicia la promocion (paso 0/6)
+  07:27:38  Paso 1/6 alcanzado: 20% del trafico a la candidata
+  07:28:02  ANALISIS FALLIDO -> reversion automatica
+
+  Tiempo total de deteccion y contencion: 66 segundos
+  Trafico maximo afectado: 20% (el del primer paso)
+  Intervencion humana: ninguna
+
+----------------------------------------------------------------
+ESTADO DEL ROLLOUT TRAS LA REVERSION
+----------------------------------------------------------------
+Name:            sa-platform-api-gateway
+Namespace:       sa-p8
+Status:          ✖ Degraded
+Message:         RolloutAborted: Rollout aborted update to revision 4: Metric "prueba-integracion" assessed Failed due to failed (1) > failureLimit (0)
+Strategy:        Canary
+  Step:          0/6
+  SetWeight:     0
+  ActualWeight:  0
+Images:          ghcr.io/majosanchez07/practicas-sa-b-202100265/p8-api-gateway:1.0.1 (stable)
+Replicas:
+  Desired:       3
+  Current:       3
+  Updated:       0
+  Ready:         3
+  Available:     3
+
+NAME                                                                  KIND         STATUS        AGE    INFO
+⟳ sa-platform-api-gateway                                             Rollout      ✖ Degraded    8h     
+├──# revision:4                                                                                         
+│  ├──⧉ sa-platform-api-gateway-5f9cf56fcb                            ReplicaSet   • ScaledDown  72s    canary
+│  └──α sa-platform-api-gateway-5f9cf56fcb-4                          AnalysisRun  ✖ Failed      71s    ✔ 4,✖ 1
+│     ├──⊞ 446826aa-3647-44c4-be9e-97834188efa4.prueba-integracion.1  Job          ✔ Successful  71s    
+│     ├──⊞ 446826aa-3647-44c4-be9e-97834188efa4.prueba-integracion.2  Job          ✖ Failed      47s    
+│     ├──⊞ 446826aa-3647-44c4-be9e-97834188efa4.prueba-de-carga.1     Job          ✔ Successful  71s    
+│     ├──⊞ 446826aa-3647-44c4-be9e-97834188efa4.prueba-de-humo.1      Job          ✔ Successful  71s    
+│     └──⊞ 446826aa-3647-44c4-be9e-97834188efa4.prueba-de-humo.2      Job          ✔ Successful  47s    
+├──# revision:3                                                                                         
+│  ├──⧉ sa-platform-api-gateway-669665d54c                            ReplicaSet   ✔ Healthy     6h46m  stable
+│  │  ├──□ sa-platform-api-gateway-669665d54c-b66w9                   Pod          ✔ Running     6h46m  ready:1/1
+│  │  ├──□ sa-platform-api-gateway-669665d54c-zxskw                   Pod          ✔ Running     6h45m  ready:1/1
+│  │  └──□ sa-platform-api-gateway-669665d54c-w622q                   Pod          ✔ Running     6h44m  ready:1/1
+│  └──α sa-platform-api-gateway-669665d54c-3                          AnalysisRun  ✔ Successful  6h46m  ✔ 21
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-integracion.1  Job          ✔ Successful  6h46m  
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-integracion.2  Job          ✔ Successful  6h46m  
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-integracion.3  Job          ✔ Successful  6h45m  
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-integracion.4  Job          ✔ Successful  6h45m  
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-integracion.5  Job          ✔ Successful  6h44m  
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-integracion.6  Job          ✔ Successful  6h44m  
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-integracion.7  Job          ✔ Successful  6h44m  
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-integracion.8  Job          ✔ Successful  6h43m  
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-integracion.9  Job          ✔ Successful  6h43m  
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-de-carga.1     Job          ✔ Successful  6h46m  
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-de-carga.2     Job          ✔ Successful  6h44m  
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-de-carga.3     Job          ✔ Successful  6h43m  
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-de-humo.1      Job          ✔ Successful  6h46m  
+│     ├──⊞ cba5dbeb-8ae3-4d8a-8290-fb2652c5a0b0.prueba-de-humo.2      Job          ✔ Successful  6h46m  
+│     ├──⊞ cba5
+----------------------------------------------------------------
+DETALLE DEL ANALISIS QUE DETECTO EL DEFECTO
+----------------------------------------------------------------
+  prueba-integracion: Failed  (exitos: 1, fallos: 1)
+  prueba-de-carga: Successful  (exitos: 1, fallos: )
+  prueba-de-humo: Successful  (exitos: 2, fallos: )
+
+Mensaje del controlador:
+  Metric "prueba-integracion" assessed Failed due to failed (1) > failureLimit (0)

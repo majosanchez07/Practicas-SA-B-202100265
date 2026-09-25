@@ -2,14 +2,12 @@
 
 Práctica 8 — María José Tebalán Sánchez — 202100265
 
-**Versión afectada:** 1.0.1
-**Versión estable de retorno:** 1.0.0
-**Fecha:** _(se completa al ejecutar la demostración)_
+**Versión afectada:** 1.0.2
+**Versión estable de retorno:** 1.0.1
+**Fecha:** 18 de septiembre de 2026, 07:26:56 – 07:28:02
 
-> Los tiempos y porcentajes de este informe se completan con los datos reales
-> de la ejecución. La estructura y el análisis corresponden al defecto que se
-> introduce deliberadamente y al comportamiento esperado del mecanismo de
-> contención, verificado previamente contra un simulador del componente.
+> Los tiempos y porcentajes de este informe son los medidos durante la
+> ejecución real sobre el entorno desplegado, no estimaciones.
 
 ---
 
@@ -47,18 +45,18 @@ fallida aborta la promoción.
 
 **Lo que no lo detectó, y por qué importa:**
 
-| Validación | Resultado | Motivo |
-|---|---|---|
-| Comprobación de arranque | Superada | El componente arranca correctamente |
-| Comprobación de vitalidad | Superada | El proceso responde |
-| Comprobación de disponibilidad | Superada | El componente se declara listo |
-| Prueba de disponibilidad del análisis | Superada | Los puntos de estado responden |
-| **Prueba de funcionalidad del análisis** | **Fallida** | El servicio esencial devuelve error |
+Resultados registrados por el análisis durante el incidente:
 
-Este contraste se verificó de forma independiente antes de la demostración,
-ejecutando las pruebas contra un simulador del componente en ambos estados. El
-resultado confirmó que la prueba de disponibilidad concluye con éxito ante la
-versión defectuosa, mientras que la de funcionalidad la detecta.
+| Prueba del análisis | Resultado | Qué significa |
+|---|---|---|
+| Disponibilidad | **Superada** (2 éxitos) | El componente estaba vivo y respondía |
+| Rendimiento | **Superada** (1 éxito) | Respondía dentro de los umbrales de latencia |
+| **Funcionalidad** | **Fallida** (1 fallo) | El servicio esencial devolvía error |
+
+Este es el dato central del incidente y no una hipótesis: dos de las tres
+pruebas dieron por buena la versión defectuosa. El componente arrancó, superó
+sus comprobaciones de estado, figuró como disponible y respondió con baja
+latencia. **Solo la prueba que ejecuta la función real la detectó.**
 
 La conclusión operativa es que **un análisis limitado a comprobar
 disponibilidad habría promovido esta versión a la totalidad de los usuarios.**
@@ -79,9 +77,10 @@ intervención humana.
 5. Los recursos de la versión candidata se retiran.
 6. El estado queda registrado para consulta posterior.
 
-**Tráfico afectado:** como máximo el veinte por ciento, correspondiente a la
-primera etapa de la promoción. Ochenta de cada cien usuarios nunca fueron
-dirigidos a la versión defectuosa.
+**Tráfico afectado:** el veinte por ciento durante veinticuatro segundos —el
+intervalo entre alcanzar la primera etapa (07:27:38) y abortar (07:28:02)—.
+Ochenta de cada cien usuarios nunca fueron dirigidos a la versión defectuosa, y
+la promoción no llegó a avanzar a la segunda etapa.
 
 **Comparación con el modelo anterior:** en la práctica precedente, la versión
 nueva sustituía a la anterior en una sola operación. El cien por cien de los
@@ -92,18 +91,22 @@ que una persona lo advirtiera y ejecutara manualmente la reversión.
 
 ## 4. Tiempo de recuperación
 
-| Momento | Tiempo acumulado |
-|---|---|
-| Se integra la propuesta de promoción | 0 |
-| El componente interno detecta el cambio y sincroniza | _(pendiente)_ |
-| Comienza la primera etapa de la promoción | _(pendiente)_ |
-| El análisis ejecuta la prueba de funcionalidad | _(pendiente)_ |
-| Se detecta el resultado desfavorable | _(pendiente)_ |
-| El tráfico vuelve íntegro a la versión estable | _(pendiente)_ |
+| Momento | Hora | Tiempo acumulado |
+|---|---|---|
+| Se publica la versión defectuosa | 07:26:56 | 0 s |
+| El controlador inicia la promoción | 07:27:15 | 19 s |
+| Primera etapa alcanzada: 20% del tráfico | 07:27:38 | 42 s |
+| El análisis detecta el resultado desfavorable | 07:28:02 | 66 s |
+| El tráfico vuelve íntegro a la versión estable | 07:28:02 | 66 s |
 
-**Tiempo total estimado:** entre uno y dos minutos, determinado por el intervalo
-de comprobación del componente interno y por la frecuencia del análisis, que es
-de veinte segundos.
+**Tiempo total de recuperación: 66 segundos.**
+
+El mensaje registrado por el controlador fue:
+
+```
+RolloutAborted: Rollout aborted update to revision 4:
+Metric "prueba-integracion" assessed Failed due to failed (1) > failureLimit (0)
+```
 
 Ninguna persona intervino en la detección ni en la contención. El tiempo de
 recuperación no depende de que alguien esté disponible, revisando registros o

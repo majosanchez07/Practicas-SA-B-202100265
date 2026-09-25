@@ -1,0 +1,27 @@
+================================================================
+ APLICACION SINCRONIZADA Y SANA
+ Practica 8 - Maria Jose Tebalan Sanchez - 202100265
+ Fecha: 2026-09-18 00:40:35
+================================================================
+
+NAME          SYNC STATUS   HEALTH STATUS   REVISION   PROJECT
+sa-platform   Synced        Healthy                    default
+
+--- Detalle ---
+  Sincronizacion : Synced
+  Salud          : Healthy
+  Automatizada   : {"prune":true,"selfHeal":true}
+  Origen         : https://github.com/majosanchez07/Practicas-SA-B-202100265-gitops.git
+
+--- Cargas de trabajo ---
+  sa-platform-api-gateway-5f867886f8-5vrlv             Running    1/1
+  sa-platform-api-gateway-5f867886f8-ssvk6             Running    1/1
+  sa-platform-auth-service-5d84fdbb6f-ps76j            Running    1/1
+  sa-platform-auth-service-5d84fdbb6f-xbwxx            Running    1/1
+  sa-platform-books-service-5f5c89fccd-bwx7v           Running    1/1
+  sa-platform-books-service-5f5c89fccd-xrn9p           Running    1/1
+  sa-platform-loans-service-58999c67ff-k2dw7           Running    1/1
+  sa-platform-loans-service-58999c67ff-qbfnr           Running    1/1
+  sa-platform-notifications-service-5599f67d98-rl86v   Running    1/1
+  sa-platform-postgresql-0                             Running    1/1
+  sa-platform-rabbitmq-0                               Running    1/1

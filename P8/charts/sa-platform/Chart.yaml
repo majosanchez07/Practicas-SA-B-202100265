@@ -27,7 +27,7 @@ keywords:
 
 maintainers:
   - name: Maria Jose Tebalan Sanchez
-    email: 202100265@ingenieria.usac.edu.gt
+    email: 3793409250101@ingenieria.usac.edu.gt
 
 dependencies:
   # Base de datos: el chart de Bitnami la despliega como StatefulSet con su

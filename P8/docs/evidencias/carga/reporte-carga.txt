@@ -1,0 +1,33 @@
+
+=================================================================
+  PRUEBA DE CARGA — Practica 8 — Carne 202100265
+=================================================================
+  Destino            : http://localhost:18080
+  Usuarios virtuales : 5
+  Duracion           : 30s
+  Fecha              : 2026-09-18T05:57:29.796Z
+
+  ---------------------------------------------------------------
+  RESULTADOS
+  ---------------------------------------------------------------
+  Peticiones totales : 612
+  Peticiones/segundo : 20.24 RPS
+  Latencia media     : 96.37 ms
+  Latencia p90       : 107.62 ms
+  Latencia p95       : 122.87 ms
+  Latencia maxima    : 348.26 ms
+  Tasa de error      : 0.000 %
+  Sobre 500 ms       : 0
+
+  Por endpoint:
+    /health/ready p95: 127.16 ms
+    /books        p95: 102.08 ms
+
+  ---------------------------------------------------------------
+  UMBRALES DE PROMOCION
+  ---------------------------------------------------------------
+  Tasa de error < 1%     : CUMPLE  (0.000%)
+  Latencia p95  < 500 ms : CUMPLE  (122.87 ms)
+
+  VEREDICTO: PROMOVER
+=================================================================

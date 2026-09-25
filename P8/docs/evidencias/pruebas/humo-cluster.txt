@@ -1,0 +1,15 @@
+===============================================================
+  PRUEBAS DE HUMO — Practica 8 — 202100265
+  Destino: http://localhost:18080
+===============================================================
+
+  OK     gateway vivo                           200  (269 ms)
+  OK     gateway listo                          200  (273 ms)
+  OK     auth accesible via gateway             200  (272 ms)
+  OK     books accesible via gateway            200  (270 ms)
+  OK     loans accesible via gateway            200  (288 ms)
+  OK     notifications via gateway              200  (278 ms)
+
+---------------------------------------------------------------
+  6 de 6 comprobaciones superadas
+---------------------------------------------------------------

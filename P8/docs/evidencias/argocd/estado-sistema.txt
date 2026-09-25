@@ -1,0 +1,26 @@
+================================================================
+ ESTADO DEL SISTEMA DESPLEGADO
+ Practica 8 - Maria Jose Tebalan Sanchez - 202100265
+ Fecha: 2026-09-18 00:10:13
+================================================================
+
+--- Nodos del cluster ---
+NAME                                         STATUS   ROLES    AGE   VERSION                INTERNAL-IP    EXTERNAL-IP   OS-IMAGE                        KERNEL-VERSION                    CONTAINER-RUNTIME
+ip-10-0-130-231.us-east-2.compute.internal   Ready    <none>   68m   v1.31.14-eks-a887778   10.0.130.231   <none>        Amazon Linux 2023.12.20260914   6.1.186-228.374.amzn2023.x86_64   containerd://2.2.7+unknown
+ip-10-0-146-85.us-east-2.compute.internal    Ready    <none>   68m   v1.31.14-eks-a887778   10.0.146.85    <none>        Amazon Linux 2023.12.20260914   6.1.186-228.374.amzn2023.x86_64   containerd://2.2.7+unknown
+
+--- Aplicacion gestionada ---
+NAME          SYNC STATUS   HEALTH STATUS   REVISION   PROJECT
+sa-platform   Synced        Degraded                   default
+
+--- Cargas de trabajo ---
+sa-platform-api-gateway-5f867886f8-5vrlv             Running      1/1
+sa-platform-auth-service-5d84fdbb6f-ps76j            Running      1/1
+sa-platform-auth-service-5d84fdbb6f-xbwxx            Running      1/1
+sa-platform-books-service-5f5c89fccd-bwx7v           Running      1/1
+sa-platform-books-service-5f5c89fccd-xrn9p           Running      1/1
+sa-platform-loans-service-58999c67ff-k2dw7           Running      1/1
+sa-platform-loans-service-58999c67ff-qbfnr           Running      1/1
+sa-platform-notifications-service-5599f67d98-rl86v   Running      1/1
+sa-platform-postgresql-0                             Running      1/1
+sa-platform-rabbitmq-0                               Running      1/1

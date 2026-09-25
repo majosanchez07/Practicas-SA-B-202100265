@@ -291,10 +291,14 @@ Acceso a la interfaz del motor de declaración:
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath='{.data.password}' | base64 -d; echo
-kubectl port-forward svc/argocd-server -n argocd 8080:443 &
+# El puerto 80 del servicio, no el 443: la instalacion usa modo inseguro
+# (HTTP) para evitar el aviso de certificado autofirmado, de modo que el
+# servidor habla HTTP y una peticion HTTPS es rechazada.
+# Se usa 8081 en local porque el 8080 suele estar ocupado.
+kubectl port-forward svc/argocd-server -n argocd 8081:80 &
 ```
 
-Abrir `https://localhost:8080`, usuario `admin`.
+Abrir `http://localhost:8081` -con http, no https-, usuario `admin`.
 
 ## B.4 Credenciales
 

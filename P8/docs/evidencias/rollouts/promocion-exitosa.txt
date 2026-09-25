@@ -1,0 +1,53 @@
+================================================================
+ PROMOCION EXITOSA POR ETAPAS
+ Practica 8 - Maria Jose Tebalan Sanchez - 202100265
+ Fecha: 2026-09-18 00:07:18
+================================================================
+
+Name:            sa-platform-api-gateway
+Namespace:       sa-p8
+Status:          ✔ Healthy
+Strategy:        Canary
+  Step:          6/6
+  SetWeight:     100
+  ActualWeight:  100
+Images:          ghcr.io/majosanchez07/practicas-sa-b-202100265/p8-api-gateway:1.0.0 (stable)
+Replicas:
+  Desired:       1
+  Current:       1
+  Updated:       1
+  Ready:         1
+  Available:     1
+
+NAME                                                                  KIND         STATUS        AGE    INFO
+⟳ sa-platform-api-gateway                                             Rollout      ✔ Healthy     45m    
+├──# revision:2                                                                                         
+│  ├──⧉ sa-platform-api-gateway-5f867886f8                            ReplicaSet   ✔ Healthy     21m    stable
+│  │  └──□ sa-platform-api-gateway-5f867886f8-5vrlv                   Pod          ✔ Running     9m     ready:1/1
+│  ├──α sa-platform-api-gateway-5f867886f8-2                          AnalysisRun  ✖ Failed      21m    ✔ 2,✖ 1
+│  │  ├──⊞ 901ef5f0-2f9a-471c-b242-c6678592e770.prueba-de-humo.1      Job          ✖ Failed      21m    
+│  │  ├──⊞ 901ef5f0-2f9a-471c-b242-c6678592e770.prueba-de-carga.1     Job          ✔ Successful  21m    
+│  │  └──⊞ 901ef5f0-2f9a-471c-b242-c6678592e770.prueba-integracion.1  Job          ✔ Successful  21m    
+│  └──α sa-platform-api-gateway-5f867886f8-2.1                        AnalysisRun  ✔ Successful  9m     ✔ 21
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-de-humo.1      Job          ✔ Successful  9m     
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-de-humo.2      Job          ✔ Successful  8m36s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-de-humo.3      Job          ✔ Successful  8m12s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-de-humo.4      Job          ✔ Successful  7m49s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-de-humo.5      Job          ✔ Successful  7m25s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-de-humo.6      Job          ✔ Successful  7m1s   
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-de-humo.7      Job          ✔ Successful  6m37s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-de-humo.8      Job          ✔ Successful  6m14s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-de-humo.9      Job          ✔ Successful  5m51s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-de-carga.1     Job          ✔ Successful  9m     
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-de-carga.2     Job          ✔ Successful  7m25s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-de-carga.3     Job          ✔ Successful  5m52s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-integracion.1  Job          ✔ Successful  9m     
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-integracion.2  Job          ✔ Successful  8m35s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-integracion.3  Job          ✔ Successful  8m12s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-integracion.4  Job          ✔ Successful  7m49s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-integracion.5  Job          ✔ Successful  7m25s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-integracion.6  Job          ✔ Successful  7m2s   
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-integracion.7  Job          ✔ Successful  6m39s  
+│     ├──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-integracion.8  Job          ✔ Successful  6m16s  
+│     └──⊞ a2bea3dd-2f63-4fc3-aa45-d21bfaf4ea7e.prueba-integracion.9  Job          ✔ Successful  5m53s  
+└──# revision:1                                                    

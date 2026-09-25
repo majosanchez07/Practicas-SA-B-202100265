@@ -1,0 +1,20 @@
+NAME                                                     READY   STATUS      RESTARTS   AGE
+pod/sa-platform-api-gateway-84ccffdc7f-l9b67             1/1     Running     0          8m29s
+pod/sa-platform-auth-service-5d84fdbb6f-ps76j            1/1     Running     0          7m15s
+pod/sa-platform-auth-service-5d84fdbb6f-xbwxx            1/1     Running     0          7m15s
+pod/sa-platform-books-service-5f5c89fccd-bwx7v           1/1     Running     0          2m24s
+pod/sa-platform-books-service-5f5c89fccd-xrn9p           1/1     Running     0          2m25s
+pod/sa-platform-cronjob-insert-29828516-nzq8w            0/1     Completed   0          105s
+pod/sa-platform-loans-service-58999c67ff-k2dw7           1/1     Running     0          2m28s
+pod/sa-platform-loans-service-58999c67ff-qbfnr           1/1     Running     0          2m22s
+pod/sa-platform-notifications-service-5599f67d98-rl86v   1/1     Running     0          2m26s
+pod/sa-platform-postgresql-0                             1/1     Running     0          8m14s
+pod/sa-platform-rabbitmq-0                               1/1     Running     0          7m53s
+
+NAME                                        TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                                 AGE
+service/sa-platform-api-gateway             ClusterIP   172.20.56.235    <none>        8080/TCP                                35m
+service/sa-platform-api-gateway-canary      ClusterIP   172.20.216.48    <none>        8080/TCP                                35m
+service/sa-platform-api-gateway-stable      ClusterIP   172.20.32.168    <none>        8080/TCP                                35m
+service/sa-platform-auth-service            ClusterIP   172.20.246.33    <none>        8000/TCP                                35m
+service/sa-platform-books-service           ClusterIP   172.20.18.30     <none>        8001/TCP                                35m
+service/sa-platform-loans-service           ClusterIP   172.20.182.141   <none>        8002/TCP                                35m

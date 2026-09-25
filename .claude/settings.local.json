@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push:*)",
+      "Bash(git -C ../Practicas-SA-B-202100265-gitops push:*)",
+      "Bash(./P9/scripts/bootstrap.sh:*)",
+      "Bash(./P9/scripts/desastre.sh:*)",
+      "Bash(./P9/scripts/prueba-restauracion-datos.sh:*)",
+      "Bash(./P9/scripts/prueba-perdida-nodo.sh:*)",
+      "Bash(terraform -chdir=P9/terraform/cluster apply:*)",
+      "Bash(terraform -chdir=P9/terraform/platform apply:*)",
+      "Bash(terraform -chdir=P9/terraform/cluster destroy:*)"
+    ]
+  }
+}

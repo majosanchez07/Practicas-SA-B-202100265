@@ -347,3 +347,40 @@ resource "kubernetes_role" "auditor" {
     verbs      = ["get", "list", "watch"]
   }
 }
+
+# ------------------------------------------------------------------------------
+# Clase de almacenamiento
+#
+# El cluster trae por defecto una clase basada en el aprovisionador antiguo de
+# volumenes, que ya no es el que gestiona el controlador instalado. Sin una
+# clase que apunte al controlador vigente, las peticiones de volumen quedan en
+# espera indefinida y las cargas de trabajo con estado -la base de datos y el
+# intermediario de mensajes- no llegan a planificarse.
+#
+# Se declara aqui, junto al resto de la plataforma, y no a mano: el enunciado
+# exige que la infraestructura se declare, y una clase de almacenamiento creada
+# con un comando suelto seria exactamente el tipo de recurso no trazable que se
+# quiere evitar.
+#
+# WaitForFirstConsumer retrasa la creacion del volumen hasta que la carga de
+# trabajo tenga nodo asignado, de modo que el volumen se crea en la misma zona
+# de disponibilidad. Sin eso, un volumen puede quedar en una zona donde la
+# carga no cabe, y bloquearse.
+# ------------------------------------------------------------------------------
+
+resource "kubernetes_storage_class" "gp3" {
+  metadata {
+    name   = "gp3"
+    labels = local.etiquetas
+  }
+
+  storage_provisioner    = "ebs.csi.aws.com"
+  reclaim_policy         = "Delete"
+  volume_binding_mode    = "WaitForFirstConsumer"
+  allow_volume_expansion = true
+
+  parameters = {
+    type      = "gp3"
+    encrypted = "true"
+  }
+}

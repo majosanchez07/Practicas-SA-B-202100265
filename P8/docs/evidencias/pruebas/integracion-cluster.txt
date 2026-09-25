@@ -1,0 +1,23 @@
+===============================================================
+  PRUEBAS DE INTEGRACION — Practica 8 — 202100265
+  Destino: http://localhost:18080
+===============================================================
+
+-- Endpoints criticos --
+  OK     catalogo de libros                           HTTP 200, JSON valido
+  OK     gateway vivo                                 HTTP 200
+  OK     gateway listo                                HTTP 200
+
+-- Enrutamiento del gateway --
+  OK     ruta hacia auth-service                      HTTP 200
+  OK     ruta hacia books-service                     HTTP 200
+  OK     ruta hacia loans-service                     HTTP 200
+  OK     ruta hacia notifications-service             HTTP 200
+
+-- Manejo de errores --
+  OK     ruta inexistente devuelve 404                HTTP 404
+  OK     recurso inexistente devuelve 404             HTTP 404
+
+---------------------------------------------------------------
+  9 de 9 comprobaciones superadas
+---------------------------------------------------------------

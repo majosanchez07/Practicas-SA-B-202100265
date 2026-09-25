@@ -24,9 +24,21 @@ metadata:
   labels:
     {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
 spec:
+  {{- /*
+  El objetivo del autoescalado depende de que controlador gobierne el servicio.
+  Los servicios con entrega progresiva no tienen Deployment: su carga de trabajo
+  la declara un Rollout, y apuntar el autoescalado a un Deployment inexistente
+  lo deja en estado degradado de forma permanente -"unable to get the target's
+  current scale"- y arrastra a toda la aplicacion con el.
+  */}}
   scaleTargetRef:
+    {{- if and $cfg.progressive $cfg.progressive.enabled }}
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    {{- else }}
     apiVersion: apps/v1
     kind: Deployment
+    {{- end }}
     name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" $svc) }}
 
   minReplicas: {{ $cfg.autoscaling.minReplicas | default 2 }}

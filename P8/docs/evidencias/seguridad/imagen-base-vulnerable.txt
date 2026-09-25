@@ -1,0 +1,43 @@
+================================================================
+ ANALISIS DE LA IMAGEN BASE DE LA DEMOSTRACION DE BLOQUEO
+ Practica 8 - Maria Jose Tebalan Sanchez - 202100265
+ Fecha: 2026-09-18 07:53:14
+================================================================
+
+La rama demo/vulnerabilidad sustituye la imagen base del componente
+expuesto por una version antigua, para demostrar que el analisis de
+seguridad bloquea la propuesta antes de publicar el artefacto.
+
+La eleccion no fue arbitraria: se comprobo previamente que la
+vulnerabilidad tuviera CORRECCION DISPONIBLE. Una sin parche no se
+puede arreglar actualizando, de modo que bloquear por ella detendria
+la entrega sin ofrecer ninguna accion posible.
+
+----------------------------------------------------------------
+
+Report Summary
+
+┌──────────────────────────────────────────────────────────────────────────────────┬──────────┬─────────────────┬─────────┐
+│                                      Target                                      │   Type   │ Vulnerabilities │ Secrets │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ node:16.14.0-alpine3.14 (alpine 3.14.3)                                          │  alpine  │        1        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ opt/yarn-v1.22.17/package.json                                                   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ usr/local/lib/node_modules/corepack/package.json                                 │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ usr/local/lib/node_modules/npm/node_modules/@gar/promisify/package.json          │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ usr/local/lib/node_modules/npm/node_modules/@isaacs/string-locale-compare/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ usr/local/lib/node_modules/npm/node_modules/@npmcli/arborist/package.json        │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ usr/local/lib/node_modules/npm/node_modules/@npmcli/ci-detect/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ usr/local/lib/node_modules/npm/node_modules/@npmcli/config/package.json          │ node-pkg │        0        │    -    │
+----------------------------------------------------------------
+
+Notese que CVE-2026-59873 esta excluida en .trivyignore y aun asi
+esta imagen sigue bloqueada: contiene ademas CVE-2022-37434 en zlib,
+que no esta excluida. El control conserva su capacidad de bloqueo.

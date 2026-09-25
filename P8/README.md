@@ -16,12 +16,12 @@ traducciones.
 |---|---|
 | Repositorio GitOps | https://github.com/majosanchez07/Practicas-SA-B-202100265-gitops |
 | Aplicación en ArgoCD | Aplicación: `sa-platform` — Namespace: `argocd` |
-| Ejecución exitosa del pipeline | _(pendiente)_ |
-| Reversión automática | _(pendiente)_ |
-| Despliegue rechazado por política | _(pendiente)_ |
+| Ejecución exitosa del pipeline | https://github.com/majosanchez07/Practicas-SA-B-202100265/actions/runs/35311531636 |
+| Reversión automática | [docs/evidencias/rollouts/reversion-automatica.txt](docs/evidencias/rollouts/reversion-automatica.txt) · Rollout `sa-platform-api-gateway` en `sa-p8` · 66 s de recuperación |
+| Despliegue rechazado por política | [docs/evidencias/politicas/rechazo.txt](docs/evidencias/politicas/rechazo.txt) |
 | Bloqueo por vulnerabilidad crítica | _(pendiente)_ |
-| Imagen firmada | `ghcr.io/majosanchez07/practicas-sa-b-202100265/p8-api-gateway:1.0.0` |
-| Reporte de prueba de carga | [P8/docs/evidencias/carga/reporte-carga.txt](docs/evidencias/carga/reporte-carga.txt) _(pendiente)_ |
+| Imagen firmada | `ghcr.io/majosanchez07/practicas-sa-b-202100265/p8-api-gateway:1.0.1` |
+| Reporte de prueba de carga | [docs/evidencias/carga/reporte-carga.txt](docs/evidencias/carga/reporte-carga.txt) · 612 peticiones, 0% error, p95 122 ms |
 | Video demostrativo | _(pendiente)_ |
 
 ---
@@ -37,6 +37,10 @@ traducciones.
 | [Manual de demostraciones](docs/manual-demostraciones.md) | Procedimiento paso a paso de las cuatro demostraciones |
 | [Guía de despliegue](docs/despliegue.md) | Procedimiento operativo completo |
 | [Guion del video](docs/guion-video.md) | Guion y minutaje de la demostración |
+| [Índice de evidencias](docs/evidencias/INDICE.md) | Todas las evidencias recogidas del entorno real |
+| [Capturas de pantalla](docs/evidencias/capturas/INDICE-CAPTURAS.md) | 20 capturas del sistema funcionando |
+| [Comandos de verificación](docs/comandos-verificacion.md) | Cómo comprobar cada criterio por cuenta propia |
+| [Guía de revisión en vivo](docs/guia-revision-en-vivo.md) | Qué mostrar y en qué orden durante la calificación |
 
 ---
 
