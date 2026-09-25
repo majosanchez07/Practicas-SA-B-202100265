@@ -24,6 +24,10 @@ ejecutaron y su salida sin editar. La primera línea de cada captura es
 |---|---|
 | [04-argocd-app-of-apps.png](04-argocd-app-of-apps.png) | Las 7 aplicaciones `Synced/Healthy`; la raíz `raiz-sa-p9` apunta a `apps/` del repositorio GitOps; sus 6 hijas y la ola de sincronización de cada una |
 | [05-pods-y-volumenes.png](05-pods-y-volumenes.png) | Las cargas de trabajo de `sa-p8` repartidas en los dos nodos y los volúmenes persistentes de PostgreSQL y RabbitMQ (`managed-csi`) |
+| [25-argocd-ui-aplicaciones.png](25-argocd-ui-aplicaciones.png) | Interfaz web de ArgoCD: las 7 aplicaciones del clúster reconstruido |
+| [26-argocd-ui-arbol-raiz.png](26-argocd-ui-arbol-raiz.png) | Interfaz web: `raiz-sa-p9` Healthy / Synced / Sync OK contra `main` del repositorio GitOps, con sus 6 aplicaciones hijas |
+| [26b-argocd-ui-raiz-hijas.png](26b-argocd-ui-raiz-hijas.png) | Interfaz web, vista de lista de la raíz: las 6 hijas `Synced` y su **orden de sincronización** (olas 0 → 1 → 3) |
+| [27-argocd-ui-sa-platform.png](27-argocd-ui-sa-platform.png) | Interfaz web: árbol de recursos de `sa-platform` (Rollout, StatefulSets, Services, PDB) tras la reconstrucción |
 
 ## Respaldos con Velero
 
