@@ -1,0 +1,193 @@
+{{- /*
+================================================================================
+PrometheusRule — SLO, presupuesto de error y alertas por consumo
+
+Practica 10 — Maria Jose Tebalan Sanchez — 202100265
+
+Los dos SLO (justificacion completa en P10/docs/slo.md)
+-------------------------------------------------------
+  SLO-1 Disponibilidad  99.5% de las peticiones de usuario que atraviesa el
+                        api-gateway responden sin error del servidor (no 5xx).
+                        Ventana movil de 30 dias. Presupuesto: 0.5%.
+  SLO-2 Latencia        95% de las peticiones de usuario se responden en menos
+                        de 300 ms. Ventana movil de 30 dias. Presupuesto: 5%.
+
+Se miden en el gateway porque es el unico punto por donde pasa TODO lo que el
+usuario pide: lo que el usuario experimenta es lo que el gateway le devuelve,
+no lo que cada microservicio dice de si mismo.
+
+Estructura de las reglas
+------------------------
+  slo:sli_errores:ratio_rate<ventana>      fraccion de peticiones que fallaron
+  slo:sli_lentas:ratio_rate<ventana>       fraccion que supero 300 ms
+  slo:presupuesto_consumido:ratio          cuanto del presupuesto del periodo
+                                           ya se gasto (1 = agotado)
+  slo:presupuesto_restante:ratio           1 - lo anterior
+
+Las alertas usan la tasa de consumo (burn rate): cuantas veces mas rapido de
+lo sostenible se esta gastando el presupuesto. Un burn rate de 1 lo agota
+justo al final de los 30 dias; 14.4 gasta el 2% del presupuesto en 1 hora.
+Cada alerta exige DOS ventanas a la vez (larga y corta): la larga prueba que
+el problema es significativo, la corta que sigue ocurriendo ahora. Sin la
+corta, la alerta seguiria disparada una hora despues de resuelto el fallo.
+
+Alertas eliminadas a proposito
+------------------------------
+Se descartaron las alertas de "ticket" (burn rate 1-3 en ventanas de 1-3 dias)
+y las de umbral instantaneo (CPU > 80%, pod reiniciado, error > 1% en 5 min).
+Ninguna exige que alguien actue AHORA: o se resuelven solas, o el SLO las
+recoge si llegan a afectar al usuario. Una alerta que nadie atiende entrena al
+equipo a ignorar las que si importan.
+================================================================================
+*/ -}}
+{{- $obs := .Values.observability | default dict -}}
+{{- if and $obs.enabled $obs.slo $obs.slo.enabled }}
+{{- $slo := $obs.slo -}}
+{{- $sel := printf "service_name=\"%s\"" ($slo.servicio | default "api-gateway") -}}
+{{- $presDisp := printf "%.4f" (subf 1 $slo.disponibilidad.objetivo) -}}
+{{- $presLat := printf "%.4f" (subf 1 $slo.latencia.objetivo) -}}
+{{- $runbooks := $slo.runbooksBaseUrl -}}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "sa-platform.fullname" . }}-slo
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: slo
+    # kube-prometheus-stack solo carga las reglas con esta etiqueta.
+    release: {{ $obs.prometheusRelease | default "monitoreo" }}
+spec:
+  groups:
+    # --------------------------------------------------------------------------
+    # SLO-1 Disponibilidad: indicador por ventana
+    # --------------------------------------------------------------------------
+    - name: slo-disponibilidad.reglas
+      interval: 30s
+      rules:
+        {{- range $v := list "5m" "30m" "1h" "6h" "1d" "30d" }}
+        - record: slo:sli_errores:ratio_rate{{ $v }}
+          expr: |
+            (
+              sum(rate(sa_http_requests_total{ {{- $sel }},status_code=~"5.."}[{{ $v }}]))
+              or vector(0)
+            )
+            /
+            sum(rate(sa_http_requests_total{ {{- $sel }}}[{{ $v }}]))
+          labels:
+            slo: disponibilidad
+        {{- end }}
+        - record: slo:objetivo:ratio
+          expr: vector({{ $slo.disponibilidad.objetivo }})
+          labels:
+            slo: disponibilidad
+        - record: slo:presupuesto_consumido:ratio
+          expr: slo:sli_errores:ratio_rate30d{slo="disponibilidad"} / {{ $presDisp }}
+          labels:
+            slo: disponibilidad
+        - record: slo:presupuesto_restante:ratio
+          expr: 1 - slo:presupuesto_consumido:ratio{slo="disponibilidad"}
+          labels:
+            slo: disponibilidad
+
+    # --------------------------------------------------------------------------
+    # SLO-2 Latencia: indicador por ventana
+    # El cubo le="0.3" existe porque los SDK declaran 0.3 como limite explicito
+    # del histograma; sin ese limite exacto el indicador seria una aproximacion.
+    # --------------------------------------------------------------------------
+    - name: slo-latencia.reglas
+      interval: 30s
+      rules:
+        {{- range $v := list "5m" "30m" "1h" "6h" "1d" "30d" }}
+        - record: slo:sli_lentas:ratio_rate{{ $v }}
+          expr: |
+            1 - (
+              sum(rate(sa_http_request_duration_seconds_bucket{ {{- $sel }},le="{{ $slo.latencia.umbralSegundos }}"}[{{ $v }}]))
+              /
+              sum(rate(sa_http_request_duration_seconds_count{ {{- $sel }}}[{{ $v }}]))
+            )
+          labels:
+            slo: latencia
+        {{- end }}
+        - record: slo:objetivo:ratio
+          expr: vector({{ $slo.latencia.objetivo }})
+          labels:
+            slo: latencia
+        - record: slo:presupuesto_consumido:ratio
+          expr: slo:sli_lentas:ratio_rate30d{slo="latencia"} / {{ $presLat }}
+          labels:
+            slo: latencia
+        - record: slo:presupuesto_restante:ratio
+          expr: 1 - slo:presupuesto_consumido:ratio{slo="latencia"}
+          labels:
+            slo: latencia
+
+    # --------------------------------------------------------------------------
+    # Alertas por consumo del presupuesto (multiventana, multi burn rate)
+    # --------------------------------------------------------------------------
+    - name: slo.alertas
+      rules:
+        - alert: SLODisponibilidadConsumoRapido
+          # 14.4x: a este ritmo el presupuesto del mes se agota en ~2 dias.
+          expr: |
+            slo:sli_errores:ratio_rate1h{slo="disponibilidad"} > (14.4 * {{ $presDisp }})
+            and
+            slo:sli_errores:ratio_rate5m{slo="disponibilidad"} > (14.4 * {{ $presDisp }})
+          for: 1m
+          labels:
+            severity: critical
+            slo: disponibilidad
+          annotations:
+            summary: "Los usuarios estan recibiendo errores: el presupuesto de disponibilidad se consume 14 veces mas rapido de lo sostenible"
+            description: "{{ "{{" }} $value | humanizePercentage {{ "}}" }} de las peticiones de la ultima hora fallaron (maximo sostenible {{ printf "%.1f" (mulf $presDisp 100) }}%). Si sigue asi, el presupuesto del mes se agota en unos 2 dias."
+            por_que_intervenir: "Cada hora a este ritmo gasta el 2% del presupuesto mensual. No se resuelve sola: alguien debe encontrar el servicio que falla."
+            runbook_url: {{ printf "%s/slo-disponibilidad-consumo-rapido.md" $runbooks | quote }}
+
+        - alert: SLODisponibilidadConsumoSostenido
+          # 6x en 6 h: un fallo parcial que no dispara la anterior pero que,
+          # sostenido, agota el presupuesto en 5 dias.
+          expr: |
+            slo:sli_errores:ratio_rate6h{slo="disponibilidad"} > (6 * {{ $presDisp }})
+            and
+            slo:sli_errores:ratio_rate30m{slo="disponibilidad"} > (6 * {{ $presDisp }})
+          for: 5m
+          labels:
+            severity: warning
+            slo: disponibilidad
+          annotations:
+            summary: "Fallo parcial sostenido: el presupuesto de disponibilidad se consume 6 veces mas rapido de lo sostenible"
+            description: "{{ "{{" }} $value | humanizePercentage {{ "}}" }} de error en las ultimas 6 horas. A este ritmo el presupuesto mensual se agota en unos 5 dias."
+            por_que_intervenir: "Un error pequeno y constante pasa desapercibido en el tablero pero gasta el 5% del presupuesto cada 6 horas."
+            runbook_url: {{ printf "%s/slo-disponibilidad-consumo-sostenido.md" $runbooks | quote }}
+
+        - alert: SLOLatenciaConsumoRapido
+          expr: |
+            slo:sli_lentas:ratio_rate1h{slo="latencia"} > (14.4 * {{ $presLat }})
+            and
+            slo:sli_lentas:ratio_rate5m{slo="latencia"} > (14.4 * {{ $presLat }})
+          for: 1m
+          labels:
+            severity: critical
+            slo: latencia
+          annotations:
+            summary: "Los usuarios esperan demasiado: el presupuesto de latencia se consume 14 veces mas rapido de lo sostenible"
+            description: "{{ "{{" }} $value | humanizePercentage {{ "}}" }} de las peticiones de la ultima hora tardaron mas de {{ printf "%.0f" (mulf $slo.latencia.umbralSegundos 1000) }} ms."
+            por_que_intervenir: "Con la mayoria de peticiones lentas el sistema es inutilizable aunque no devuelva errores; ningun mecanismo automatico lo corrige."
+            runbook_url: {{ printf "%s/slo-latencia-consumo-rapido.md" $runbooks | quote }}
+
+        - alert: SLOLatenciaConsumoSostenido
+          expr: |
+            slo:sli_lentas:ratio_rate6h{slo="latencia"} > (6 * {{ $presLat }})
+            and
+            slo:sli_lentas:ratio_rate30m{slo="latencia"} > (6 * {{ $presLat }})
+          for: 5m
+          labels:
+            severity: warning
+            slo: latencia
+          annotations:
+            summary: "Degradacion de latencia sostenida durante horas"
+            description: "{{ "{{" }} $value | humanizePercentage {{ "}}" }} de las peticiones de las ultimas 6 horas fueron lentas."
+            por_que_intervenir: "Indica una regresion que ya llego a todos los usuarios (no la detuvo el canary) o un recurso que se esta agotando."
+            runbook_url: {{ printf "%s/slo-latencia-consumo-sostenido.md" $runbooks | quote }}
+{{- end }}
