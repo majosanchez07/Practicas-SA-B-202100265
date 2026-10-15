@@ -449,10 +449,13 @@ progressiveDefaults:
   # (templates/analysistemplates.yaml). Las imagenes de prueba de la P8 se
   # retiraron con el.
   thresholds:
-    # Espera antes de la primera medicion: el SDK exporta cada 10 s y
-    # Prometheus recolecta cada 15 s; antes de 60 s la ventana de 1 min de la
-    # candidata aun no tiene muestras.
-    retrasoInicial: 60s
+    # Espera antes de la primera medicion. El analisis empieza a contar cuando
+    # arranca el Rollout, NO cuando el pod candidato esta listo. Con 60 s (valor
+    # inicial) la primera promocion real se aborto: el pod llevaba segundos
+    # atendiendo, rate()[1m] no tenia dos muestras y la consulta salio vacia
+    # (vacio = fallo, a proposito). 120 s = arranque del pod (~30-40 s) + una
+    # ventana completa de 1 min con exportacion cada 10 s y scrape cada 15 s.
+    retrasoInicial: 120s
     # Cada cuanto se repite la consulta.
     intervalo: 30s
     # Los dos umbrales que deciden la promocion (justificados en la plantilla).

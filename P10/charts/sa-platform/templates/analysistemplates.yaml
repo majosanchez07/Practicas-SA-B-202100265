@@ -42,9 +42,9 @@ Por que esos umbrales y no otros
   failureLimit 1  dos mediciones fallidas abortan. Con una sola, un pico de un
                 minuto -un pod recien arrancado calentando su JIT- revertiria
                 versiones sanas.
-  initialDelay 60s  el SDK exporta cada 10 s y Prometheus recolecta cada 15 s:
-                antes de un minuto la ventana de rate() aun no tiene muestras
-                suficientes de la candidata.
+  initialDelay 120s  el analisis empieza con el Rollout, no con el pod listo.
+                Con 60 s la primera promocion real de 1.1.2 se aborto por
+                consultas vacias (ver informe de operacion).
 ================================================================================
 */ -}}
 {{- $root := . -}}
@@ -74,7 +74,7 @@ spec:
 
   metrics:
     - name: tasa-de-error
-      initialDelay: {{ $umbrales.retrasoInicial | default "60s" }}
+      initialDelay: {{ $umbrales.retrasoInicial | default "120s" }}
       interval: {{ $umbrales.intervalo | default "30s" }}
       failureLimit: 1
       consecutiveErrorLimit: 2
@@ -91,7 +91,7 @@ spec:
             sum(rate(sa_http_requests_total{service_name="{{ "{{" }}args.servicio{{ "}}" }}",rollout_hash="{{ "{{" }}args.canary-hash{{ "}}" }}"}[1m]))
 
     - name: latencia-p95
-      initialDelay: {{ $umbrales.retrasoInicial | default "60s" }}
+      initialDelay: {{ $umbrales.retrasoInicial | default "120s" }}
       interval: {{ $umbrales.intervalo | default "30s" }}
       failureLimit: 1
       consecutiveErrorLimit: 2
