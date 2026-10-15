@@ -445,24 +445,62 @@ limitRange:
 #                        entorno, pero si ante una regresion real.
 # ==============================================================================
 progressiveDefaults:
-  # Imagen de las pruebas de humo e integracion. Version fijada: la politica de
-  # Kyverno de esta practica prohibe la etiqueta latest, y aplica tambien a los
-  # pods que crea el analisis.
-  testImage: curlimages/curl:8.11.1
-  # Imagen de la prueba de carga.
-  loadTestImage: grafana/k6:0.55.0
-
+  # Practica 10: el analisis ya no lanza Jobs de prueba, consulta Prometheus
+  # (templates/analysistemplates.yaml). Las imagenes de prueba de la P8 se
+  # retiraron con el.
   thresholds:
-    # Cada cuanto se repiten las pruebas de humo e integracion.
-    intervalo: 20s
-    # La prueba de carga cuesta mas, se ejecuta con menos frecuencia.
-    intervaloCarga: 60s
-    # Usuarios virtuales concurrentes y duracion de cada prueba de carga.
-    vus: 5
-    duracion: 30s
-    # Los dos umbrales que deciden la promocion.
+    # Espera antes de la primera medicion: el SDK exporta cada 10 s y
+    # Prometheus recolecta cada 15 s; antes de 60 s la ventana de 1 min de la
+    # candidata aun no tiene muestras.
+    retrasoInicial: 60s
+    # Cada cuanto se repite la consulta.
+    intervalo: 30s
+    # Los dos umbrales que deciden la promocion (justificados en la plantilla).
     tasaErrorMaxima: 0.01
-    latenciaP95Ms: 500
+    latenciaP95Segundos: 0.5
+
+# ==============================================================================
+# Observabilidad (Practica 10)
+#
+# El stack (Prometheus, Alertmanager, Grafana, Loki, Tempo y el Collector) lo
+# instala el repositorio GitOps en el namespace observabilidad. Este chart solo
+# aporta lo que pertenece a la aplicacion: a donde enviar la telemetria, sus
+# SLO y alertas, su tablero y el trafico que alimenta al canary.
+# ==============================================================================
+observability:
+  enabled: false
+  otlpEndpoint: http://otel-collector.observabilidad.svc.cluster.local:4318
+  prometheusAddress: http://monitoreo-prometheus.observabilidad.svc.cluster.local:9090
+  # Etiqueta release que exige el operador de Prometheus para cargar reglas.
+  prometheusRelease: monitoreo
+  namespace: observabilidad
+
+  slo:
+    enabled: true
+    # Donde se mide la experiencia del usuario: el gateway.
+    servicio: api-gateway
+    disponibilidad:
+      objetivo: 0.995
+    latencia:
+      objetivo: 0.95
+      umbralSegundos: 0.3
+    runbooksBaseUrl: https://github.com/majosanchez07/Practicas-SA-B-202100265/blob/main/P10/docs/runbooks
+
+  dashboard:
+    enabled: true
+
+  # Trafico permanente hacia el gateway. Sin el, el canary no tendria muestras
+  # y el analisis fallaria por ausencia de datos (que es lo correcto: nunca se
+  # aprueba sin evidencia). Simula a usuarios que navegan el catalogo y piden
+  # prestamos; no es una prueba con veredicto, solo genera uso.
+  trafficGenerator:
+    enabled: false
+    image: grafana/k6:0.55.0
+    # Peticiones por segundo aproximadas (usuarios virtuales con pausa de 1 s).
+    vus: 4
+    resources:
+      requests: { cpu: 25m, memory: 64Mi }
+      limits: { cpu: 300m, memory: 256Mi }
 
 # ==============================================================================
 # Dependencias declaradas en Chart.yaml
