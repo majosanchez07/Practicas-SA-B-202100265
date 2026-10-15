@@ -3,6 +3,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from src.models.database import SessionLocal
 from src.models.book import Book
+from src import observabilidad
 
 @strawberry.type
 class BookType:
@@ -31,6 +32,9 @@ class Query:
         db: Session = SessionLocal()
         try:
             b = db.query(Book).filter(Book.id == id).first()
+            # Practica 10: metrica de negocio, cuantas consultas encuentran
+            # el libro que el usuario busca.
+            observabilidad.libro_consultado(b is not None)
             if not b:
                 return None
             return BookType(id=b.id, title=b.title, author=b.author,

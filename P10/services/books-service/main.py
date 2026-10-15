@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.models.database import Base, engine, crear_schema_si_no_existe
+from src import observabilidad
 from src.graphql.schema import schema
 from src import routes_health
 from src.config import settings
@@ -33,6 +34,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+# Practica 10: trazas, metricas y registros JSON (ver src/observabilidad.py).
+observabilidad.configurar(app, engine)
 
 app.include_router(routes_health.router)
 app.include_router(GraphQLRouter(schema), prefix="/graphql")

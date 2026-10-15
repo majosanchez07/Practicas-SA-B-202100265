@@ -16,6 +16,10 @@ Dos cosas ocurren aqui, y en este orden:
 """
 import os
 
+# Practica 10: sin Collector en las pruebas; la API de OpenTelemetry queda en
+# modo sin efecto y los registros siguen saliendo en JSON.
+os.environ.setdefault('OTEL_SDK_DISABLED', 'true')
+
 os.environ.setdefault(
     'DATABASE_URL', 'postgresql://prueba:prueba@localhost:5432/prueba'
 )
