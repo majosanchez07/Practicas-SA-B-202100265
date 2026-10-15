@@ -73,20 +73,20 @@ spec:
       # en el primer paso y se mantiene vivo mientras el rollout avanza: si en
       # cualquier momento las metricas se degradan, aborta la promocion aunque
       # el paso en curso sea una pausa.
+      {{- /*
+      Practica 10: el analisis ya no ejecuta pruebas; consulta Prometheus por
+      las metricas de la version candidata. canary-hash identifica a esa
+      version (medir el Service ordinario promediaria las dos versiones y
+      diluiria el defecto): es el mismo valor que el SDK publica como
+      rollout_hash.
+      */}}
       analysis:
         templates:
-          - templateName: {{ $nombre }}-analisis
+          - templateName: {{ $nombre }}-analisis-metricas
         args:
-          # El analisis necesita saber a que Service consultar. Se le pasa el
-          # canary para que mida SOLO la version nueva: medir el Service
-          # ordinario promediaria las dos versiones y diluiria el defecto
-          # justamente cuando el canary lleva poco trafico.
-          - name: servicio-canary
-            value: {{ $nombre }}-canary
-          - name: namespace
-            value: {{ $root.Values.namespace.name }}
-          - name: puerto
-            value: {{ $cfg.port | quote }}
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
 
       steps:
         {{- range $paso := $cfg.progressive.steps }}
@@ -183,6 +183,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            {{- include "sa-platform.otelEnv" (dict "root" $root "svc" $svc "cfg" $cfg "hashLabel" "rollouts-pod-template-hash") | nindent 12 }}
 
           startupProbe:
             httpGet:

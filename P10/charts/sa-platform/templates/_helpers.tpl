@@ -197,3 +197,46 @@ URL de conexion al broker, construida con el mismo criterio que la anterior.
 {{- $pass := required "rabbitmq.auth.password es obligatorio (usar --set o un values propio, nunca versionarlo)" .Values.rabbitmq.auth.password -}}
 {{- printf "amqp://%s:%s@%s:5672" $user $pass (include "sa-platform.rabbitmqHost" .) -}}
 {{- end -}}
+
+{{/*
+sa-platform.otelEnv — Practica 10
+Variables de OpenTelemetry y del fallo inducido, comunes a Rollouts y
+Deployments. Recibe dict "root" "svc" "cfg" "hashLabel".
+
+  OTEL_EXPORTER_OTLP_ENDPOINT  el Collector; el servicio no conoce los backends
+  SERVICE_VERSION              etiqueta de la imagen, para distinguir versiones
+  ROLLOUT_HASH                 hash del ReplicaSet, tomado de la etiqueta que
+                               pone Argo Rollouts (rollouts-pod-template-hash).
+                               Es lo que deja al analisis del canary medir solo
+                               la version candidata.
+  FALLO_*                      solo si values declara services.<svc>.fault
+*/}}
+{{- define "sa-platform.otelEnv" -}}
+{{- $root := .root -}}
+{{- $cfg := .cfg -}}
+{{- $obs := $root.Values.observability | default dict -}}
+- name: OTEL_SDK_DISABLED
+  value: {{ (not ($obs.enabled | default false)) | toString | quote }}
+- name: OTEL_SERVICE_NAME
+  value: {{ .svc | quote }}
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: {{ $obs.otlpEndpoint | default "http://otel-collector.observabilidad.svc.cluster.local:4318" | quote }}
+- name: SERVICE_VERSION
+  value: {{ $cfg.image.tag | default $root.Values.global.imageTag | default $root.Chart.AppVersion | quote }}
+- name: ROLLOUT_HASH
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.labels['{{ .hashLabel }}']
+{{- with $cfg.fault }}
+{{- if .enabled }}
+{{- if .rutas }}
+- name: FALLO_RUTAS
+  value: {{ .rutas | quote }}
+{{- end }}
+- name: FALLO_LATENCIA_MS
+  value: {{ .latenciaMs | default 0 | quote }}
+- name: FALLO_TASA_ERROR
+  value: {{ .tasaError | default 0 | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}

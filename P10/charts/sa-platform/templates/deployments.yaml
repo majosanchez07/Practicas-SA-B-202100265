@@ -165,6 +165,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            {{- include "sa-platform.otelEnv" (dict "root" $root "svc" $svc "cfg" $cfg "hashLabel" "pod-template-hash") | nindent 12 }}
 
           {{- /*
           ---------------------------------------------------------------------
