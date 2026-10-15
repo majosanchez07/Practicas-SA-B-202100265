@@ -36,6 +36,7 @@ sintéticas y pasa a decidirse con métricas reales de la versión candidata.
 | [docs/preguntas-teoricas.md](docs/preguntas-teoricas.md) | Comportamiento y límites de esta instrumentación |
 | [docs/guia-despliegue-y-demostraciones.md](docs/guia-despliegue-y-demostraciones.md) | Despliegue por GitOps y procedimiento de las dos demostraciones |
 | [docs/evidencias/INDICE.md](docs/evidencias/INDICE.md) | Evidencias y cómo se generan |
+| [docs/guia-grabacion-video.md](docs/guia-grabacion-video.md) | Guía paso a paso para grabar el video demostrativo |
 
 ## Qué cambió respecto de las prácticas 8 y 9
 
