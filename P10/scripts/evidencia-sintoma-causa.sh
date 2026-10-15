@@ -57,23 +57,70 @@ curl -s "http://127.0.0.1:9093/api/v2/alerts?active=true&filter=alertname%3D%22$
 
 echo
 echo "================ RECORRIDO CRONOMETRADO ================"
-echo "Pulsar Enter EN EL MOMENTO en que se completa cada paso."
-paso() {
-  read -r -p "$1 > " _
-  registro "PASO: $1 (t+$(( $(epoch) - T_INICIO_RECORRIDO ))s)"
-}
-read -r -p "Enter al ABRIR la alerta en Alertmanager/Grafana > " _
 T_INICIO_RECORRIDO=$(epoch)
-registro "RECORRIDO: alerta abierta"
-paso "1. Runbook abierto y tablero de operacion en la fila Errores (servicio y ruta identificados)"
-paso "2. Traza de una peticion fallida abierta en Tempo (span con error identificado)"
-paso "3. Registro del error en Loki abierto desde la traza (mensaje y causa leidos)"
+registro "RECORRIDO: alerta abierta (runbook_url: $(jq -r '.[0].annotations.runbook_url' "${EVID}/sintoma-causa/alerta-${SELLO}.json"))"
+
+if [ "${RECORRIDO_AUTO:-0}" = "1" ]; then
+  # Modo automatico: el recorrido lo hacen las mismas APIs que consulta
+  # Grafana (Prometheus, Tempo y Loki), en el mismo orden que el runbook.
+  kubectl -n "${NS_OBS}" port-forward svc/tempo 3200:3100 >/dev/null 2>&1 &
+  PF_TEMPO=$!
+  kubectl -n "${NS_OBS}" port-forward svc/loki 3100:3100 >/dev/null 2>&1 &
+  PF_LOKI=$!
+  trap 'kill ${PF_PROM} ${PF_AM} ${PF_TEMPO} ${PF_LOKI} 2>/dev/null || true' EXIT
+  sleep 3
+
+  # 1. Metricas: que ruta falla en el gateway y que servicio interno la origina.
+  RUTA=$(curl -s --get "http://127.0.0.1:9090/api/v1/query" --data-urlencode \
+    'query=topk(1, sum by (route) (rate(sa_http_requests_total{service_name="api-gateway",status_code=~"5.."}[5m])))' \
+    | jq -r '.data.result[0].metric.route')
+  SVC=$(curl -s --get "http://127.0.0.1:9090/api/v1/query" --data-urlencode \
+    'query=topk(1, sum by (service_name) (rate(sa_http_requests_total{service_name!="api-gateway",status_code=~"5.."}[5m])))' \
+    | jq -r '.data.result[0].metric.service_name')
+  registro "PASO 1 (metricas): el gateway falla en la ruta ${RUTA}; el servicio interno con errores 5xx es ${SVC} (t+$(( $(epoch) - T_INICIO_RECORRIDO ))s)"
+
+  # 2. Trazas: una peticion fallida de ese servicio y su span en error.
+  AHORA=$(epoch)
+  TID=$(curl -s --get "http://127.0.0.1:3200/api/search" \
+    --data-urlencode "q={ resource.service.name = \"${SVC}\" && status = error }" \
+    --data-urlencode "start=$((AHORA-600))" --data-urlencode "end=${AHORA}" --data-urlencode limit=1 \
+    | jq -r '.traces[0].traceID')
+  curl -s -H 'Accept: application/json' "http://127.0.0.1:3200/api/traces/${TID}" > "${EVID}/sintoma-causa/traza-${TID}.json"
+  SPAN=$(jq -r --arg s "${SVC}" '[.batches[] | select(any(.resource.attributes[]; .key=="service.name" and .value.stringValue==$s))
+          | .scopeSpans[].spans[] | select(.status.code=="STATUS_CODE_ERROR")] | first
+          | "\(.name) duracion=\(((.endTimeUnixNano|tonumber)-(.startTimeUnixNano|tonumber))/1000000|floor)ms codigo=\([.attributes[] | select(.key|test("status_code")) | .value.intValue] | first)"' \
+          "${EVID}/sintoma-causa/traza-${TID}.json")
+  SERVICIOS=$(jq -r '[.batches[].resource.attributes[] | select(.key=="service.name") | .value.stringValue] | unique | join(" -> ")' "${EVID}/sintoma-causa/traza-${TID}.json")
+  registro "PASO 2 (trazas): traza ${TID} [${SERVICIOS}]; span en error de ${SVC}: ${SPAN} (t+$(( $(epoch) - T_INICIO_RECORRIDO ))s)"
+
+  # 3. Registros: el error de esa traza, consultado por campo en Loki.
+  LINEA=$(curl -s --get "http://127.0.0.1:3100/loki/api/v1/query_range" \
+    --data-urlencode "query={namespace=\"${NS_APP}\", container=\"${SVC}\"} | json | trace_id=\"${TID}\" | level=\"error\"" \
+    --data-urlencode "start=$(( AHORA - 900 ))000000000" | jq -r '.data.result[0].values[0][1]')
+  echo "${LINEA}" > "${EVID}/sintoma-causa/registro-${TID}.json"
+  registro "PASO 3 (registros): ${LINEA} (t+$(( $(epoch) - T_INICIO_RECORRIDO ))s)"
+else
+  echo "Pulsar Enter EN EL MOMENTO en que se completa cada paso."
+  paso() {
+    read -r -p "$1 > " _
+    registro "PASO: $1 (t+$(( $(epoch) - T_INICIO_RECORRIDO ))s)"
+  }
+  paso "1. Runbook abierto y tablero de operacion en la fila Errores (servicio y ruta identificados)"
+  paso "2. Traza de una peticion fallida abierta en Tempo (span con error identificado)"
+  paso "3. Registro del error en Loki abierto desde la traza (mensaje y causa leidos)"
+fi
 T_FIN_RECORRIDO=$(epoch)
 registro "RECORRIDO COMPLETO alerta -> registro: $(( T_FIN_RECORRIDO - T_INICIO_RECORRIDO )) s"
 
-read -r -p "Revertir el fallo por GitOps (fault.enabled: false, commit + push) y pulsar Enter al hacer push > " _
+# Recuperacion: se espera a que la correccion llegue por GitOps (nueva
+# generacion del Deployment), igual que se espero al fallo.
+GEN_FALLO="$(kubectl -n "${NS_APP}" get deploy sa-platform-books-service -o jsonpath='{.metadata.generation}')"
+registro "Esperando la correccion por GitOps (fault.enabled: false)..."
+until [ "$(kubectl -n "${NS_APP}" get deploy sa-platform-books-service -o jsonpath='{.metadata.generation}')" != "${GEN_FALLO}" ]; do
+  sleep 2
+done
 T_REVERSION=$(epoch)
-registro "Correccion empujada al repositorio GitOps"
+registro "Correccion aplicada por ArgoCD (nueva generacion de books-service)"
 until [ "$(promql 'slo:sli_errores:ratio_rate5m{slo="disponibilidad"}')" != "sin-datos" ] \
    && awk "BEGIN{exit !($(promql 'slo:sli_errores:ratio_rate5m{slo="disponibilidad"}') < 0.005)}"; do
   sleep 15
