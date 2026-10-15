@@ -7,6 +7,7 @@ const resolvers = require('./graphql/resolvers');
 const Loan = require('./models/loan');
 const { registrarHealth } = require('./health');
 const broker = require('./broker');
+const log = require('./logger');
 
 async function startServer() {
   const app = express();
@@ -24,20 +25,22 @@ async function startServer() {
   await sequelize.authenticate();
   await sequelize.crearSchemaSiNoExiste();
   await sequelize.sync();
-  console.log(`Base de datos conectada (schema: ${sequelize.DB_SCHEMA})`);
+  log.info('base de datos conectada', { schema: sequelize.DB_SCHEMA });
 
   // No se espera a la conexion con el broker: el servicio queda listo para
   // atender peticiones y la conexion se establece en segundo plano en cuanto
   // RabbitMQ este disponible.
   broker.conectar().catch((err) => {
-    console.error('[broker] no se pudo conectar:', err.message);
+    log.error('no se pudo conectar al broker', { error: err.message });
   });
 
   const PORT = process.env.PORT || 8002;
   app.listen(PORT, () => {
-    console.log(`Loans Service corriendo en puerto ${PORT}`);
-    console.log(`GraphQL en http://localhost:${PORT}/graphql`);
+    log.info('loans-service iniciado', { port: Number(PORT), graphql: '/graphql' });
   });
 }
 
-startServer().catch(console.error);
+startServer().catch((err) => {
+  log.error('loans-service no pudo arrancar', { error: err.message });
+  process.exit(1);
+});

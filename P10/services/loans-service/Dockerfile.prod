@@ -39,4 +39,5 @@ USER node
 EXPOSE 8002
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "src/index.js"]
+# Practica 10: precarga de OpenTelemetry (ver src/telemetria.js).
+CMD ["node", "-r", "./src/telemetria.js", "src/index.js"]
