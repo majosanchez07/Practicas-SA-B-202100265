@@ -13,6 +13,47 @@ peticion; solo genera uso. Quien juzga es el analisis, mirando lo que la
 version candidata hizo con ese uso.
 ================================================================================
 */ -}}
+{{- define "sa-platform.scriptTrafico" -}}
+import http from 'k6/http';
+import { sleep } from 'k6';
+
+// Sin thresholds a proposito: este script no aprueba ni reprueba nada.
+export const options = {
+  scenarios: {
+    usuarios: { executor: 'constant-vus', vus: Number(__ENV.VUS || 4), duration: '87600h' },
+  },
+  discardResponseBodies: true,
+  // Una conexion por peticion. kube-proxy balancea por CONEXION: con
+  // keep-alive, las conexiones de cada usuario virtual quedan fijadas a los
+  // pods que existian al arrancar y un pod canary nuevo no recibe nada. Asi
+  // ocurrio en la primera promocion de 1.1.2: 39 peticiones al candidato en
+  // 10 minutos, consultas en NaN y aborto por falta de datos.
+  noConnectionReuse: true,
+};
+
+const BASE = __ENV.BASE;
+const JSON_HDR = { headers: { 'Content-Type': 'application/json' }, timeout: '10s' };
+
+export default function () {
+  // 1. Navegar el catalogo (la accion mas frecuente de un usuario).
+  http.post(`${BASE}/books/graphql`,
+    JSON.stringify({ query: '{ books { id title available } }' }), JSON_HDR);
+
+  // 2. Consultar un libro concreto.
+  const libro = 1 + Math.floor(Math.random() * 20);
+  http.post(`${BASE}/books/graphql`,
+    JSON.stringify({ query: `{ book(id: ${libro}) { id title available } }` }), JSON_HDR);
+
+  // 3. Uno de cada tres usuarios pide un prestamo: atraviesa
+  //    gateway -> loans-service -> books-service bajo una sola traza.
+  if (Math.random() < 0.33) {
+    http.post(`${BASE}/loans/graphql`, JSON.stringify({
+      query: `mutation { createLoan(userId: ${1 + Math.floor(Math.random() * 50)}, bookId: ${libro}) { id status } }`,
+    }), JSON_HDR);
+  }
+  sleep(1);
+}
+{{- end }}
 {{- $obs := .Values.observability | default dict -}}
 {{- $gen := $obs.trafficGenerator | default dict -}}
 {{- if and $obs.enabled $gen.enabled }}
@@ -33,45 +74,7 @@ metadata:
     app.kubernetes.io/component: generador-trafico
 data:
   usuarios.js: |
-    import http from 'k6/http';
-    import { sleep } from 'k6';
-
-    // Sin thresholds a proposito: este script no aprueba ni reprueba nada.
-    export const options = {
-      scenarios: {
-        usuarios: { executor: 'constant-vus', vus: Number(__ENV.VUS || 4), duration: '87600h' },
-      },
-      discardResponseBodies: true,
-      // Una conexion por peticion. kube-proxy balancea por CONEXION: con
-      // keep-alive, las conexiones de cada usuario virtual quedan fijadas a los
-      // pods que existian al arrancar y un pod canary nuevo no recibe nada. Asi
-      // ocurrio en la primera promocion de 1.1.2: 39 peticiones al candidato en
-      // 10 minutos, consultas en NaN y aborto por falta de datos.
-      noConnectionReuse: true,
-    };
-
-    const BASE = __ENV.BASE;
-    const JSON_HDR = { headers: { 'Content-Type': 'application/json' }, timeout: '10s' };
-
-    export default function () {
-      // 1. Navegar el catalogo (la accion mas frecuente de un usuario).
-      http.post(`${BASE}/books/graphql`,
-        JSON.stringify({ query: '{ books { id title available } }' }), JSON_HDR);
-
-      // 2. Consultar un libro concreto.
-      const libro = 1 + Math.floor(Math.random() * 20);
-      http.post(`${BASE}/books/graphql`,
-        JSON.stringify({ query: `{ book(id: ${libro}) { id title available } }` }), JSON_HDR);
-
-      // 3. Uno de cada tres usuarios pide un prestamo: atraviesa
-      //    gateway -> loans-service -> books-service bajo una sola traza.
-      if (Math.random() < 0.33) {
-        http.post(`${BASE}/loans/graphql`, JSON.stringify({
-          query: `mutation { createLoan(userId: ${1 + Math.floor(Math.random() * 50)}, bookId: ${libro}) { id status } }`,
-        }), JSON_HDR);
-      }
-      sleep(1);
-    }
+{{ include "sa-platform.scriptTrafico" . | indent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -93,7 +96,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: generador-trafico
       annotations:
-        checksum/script: {{ $gen | toJson | sha256sum }}
+        # Hash del script Y de los valores: cambiar cualquiera de los dos debe
+        # reiniciar el pod. La primera version solo usaba los valores, y un
+        # cambio del script quedo en el ConfigMap sin llegar nunca al pod.
+        checksum/script: {{ printf "%s%s" (include "sa-platform.scriptTrafico" .) ($gen | toJson) | sha256sum }}
     spec:
       automountServiceAccountToken: false
       securityContext:
