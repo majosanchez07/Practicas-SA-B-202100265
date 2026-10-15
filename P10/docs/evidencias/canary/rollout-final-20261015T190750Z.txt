@@ -1,0 +1,33 @@
+Name:            sa-platform-api-gateway
+Namespace:       sa-p8
+Status:          ✖ Degraded
+Message:         RolloutAborted: Rollout aborted update to revision 3: Metric "tasa-de-error" assessed Failed due to failed (2) > failureLimit (1)
+Strategy:        Canary
+  Step:          0/6
+  SetWeight:     0
+  ActualWeight:  0
+Images:          ghcr.io/majosanchez07/practicas-sa-b-202100265/p10-api-gateway:1.1.2 (stable)
+Replicas:
+  Desired:       2
+  Current:       2
+  Updated:       0
+  Ready:         2
+  Available:     2
+
+NAME                                                 KIND         STATUS        AGE    INFO
+⟳ sa-platform-api-gateway                            Rollout      ✖ Degraded    51m    
+├──# revision:3                                                                        
+│  ├──⧉ sa-platform-api-gateway-5b97d8df46           ReplicaSet   • ScaledDown  5m46s  canary
+│  └──α sa-platform-api-gateway-5b97d8df46-3         AnalysisRun  ✖ Failed      5m46s  ✖ 4
+├──# revision:2                                                                        
+│  ├──⧉ sa-platform-api-gateway-695fddc58d           ReplicaSet   ✔ Healthy     32m    stable
+│  │  ├──□ sa-platform-api-gateway-695fddc58d-plsrc  Pod          ✔ Running     11m    ready:1/1
+│  │  └──□ sa-platform-api-gateway-695fddc58d-258xx  Pod          ✔ Running     3m16s  ready:1/1
+│  ├──α sa-platform-api-gateway-695fddc58d-2         AnalysisRun  ✖ Failed      32m    ✖ 4
+│  ├──α sa-platform-api-gateway-695fddc58d-2.1       AnalysisRun  ✖ Failed      28m    ✖ 4
+│  ├──α sa-platform-api-gateway-695fddc58d-2.2       AnalysisRun  ✖ Failed      24m    ✖ 4
+│  ├──α sa-platform-api-gateway-695fddc58d-2.3       AnalysisRun  ✖ Failed      19m    ✖ 4
+│  ├──α sa-platform-api-gateway-695fddc58d-2.4       AnalysisRun  ✖ Failed      15m    ✖ 4
+│  └──α sa-platform-api-gateway-695fddc58d-2.5       AnalysisRun  ✔ Successful  11m    ✔ 12
+└──# revision:1                                                                        
+   └──⧉ sa-platform-api-gateway-7d58655c5d           ReplicaSet   • ScaledDown  51m    

@@ -1,0 +1,156 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisRun
+metadata:
+  annotations:
+    rollout.argoproj.io/revision: "2"
+  creationTimestamp: "2026-10-15T19:02:17Z"
+  generation: 10
+  labels:
+    app.kubernetes.io/component: api-gateway
+    app.kubernetes.io/instance: sa-platform
+    app.kubernetes.io/name: sa-platform
+    rollout-type: Background
+    rollouts-pod-template-hash: 695fddc58d
+  name: sa-platform-api-gateway-695fddc58d-2.5
+  namespace: sa-p8
+  ownerReferences:
+  - apiVersion: argoproj.io/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Rollout
+    name: sa-platform-api-gateway
+    uid: 8471b522-2e0b-4603-8a86-c34677ecffbf
+  resourceVersion: "39477"
+  uid: b77de2c1-5723-4dc7-9a9b-055d8bc8b6b2
+spec:
+  args:
+  - name: servicio
+    value: api-gateway
+  - name: canary-hash
+    value: 695fddc58d
+  - name: umbral-error
+    value: "0.01"
+  - name: umbral-p95
+    value: "0.5"
+  metrics:
+  - consecutiveErrorLimit: 2
+    failureLimit: 1
+    initialDelay: 120s
+    interval: 30s
+    name: tasa-de-error
+    provider:
+      prometheus:
+        address: http://monitoreo-prometheus.observabilidad.svc.cluster.local:9090
+        authentication:
+          oauth2: {}
+          sigv4: {}
+        query: |
+          (
+            sum(rate(sa_http_requests_total{service_name="{{args.servicio}}",rollout_hash="{{args.canary-hash}}",status_code=~"5.."}[1m]))
+            or vector(0)
+          )
+          /
+          sum(rate(sa_http_requests_total{service_name="{{args.servicio}}",rollout_hash="{{args.canary-hash}}"}[1m]))
+    successCondition: len(result) > 0 && !isNaN(result[0]) && result[0] < {{args.umbral-error}}
+  - consecutiveErrorLimit: 2
+    failureLimit: 1
+    initialDelay: 120s
+    interval: 30s
+    name: latencia-p95
+    provider:
+      prometheus:
+        address: http://monitoreo-prometheus.observabilidad.svc.cluster.local:9090
+        authentication:
+          oauth2: {}
+          sigv4: {}
+        query: |
+          histogram_quantile(0.95,
+            sum by (le) (
+              rate(sa_http_request_duration_seconds_bucket{service_name="{{args.servicio}}",rollout_hash="{{args.canary-hash}}"}[1m])
+            )
+          )
+    successCondition: len(result) > 0 && !isNaN(result[0]) && result[0] < {{args.umbral-p95}}
+  terminate: true
+status:
+  completedAt: "2026-10-15T19:07:15Z"
+  dryRunSummary: {}
+  message: Run Terminated
+  metricResults:
+  - count: 6
+    measurements:
+    - finishedAt: "2026-10-15T19:04:17Z"
+      phase: Successful
+      startedAt: "2026-10-15T19:04:17Z"
+      value: '[0]'
+    - finishedAt: "2026-10-15T19:04:47Z"
+      phase: Successful
+      startedAt: "2026-10-15T19:04:47Z"
+      value: '[0]'
+    - finishedAt: "2026-10-15T19:05:17Z"
+      phase: Successful
+      startedAt: "2026-10-15T19:05:17Z"
+      value: '[0]'
+    - finishedAt: "2026-10-15T19:05:47Z"
+      phase: Successful
+      startedAt: "2026-10-15T19:05:47Z"
+      value: '[0]'
+    - finishedAt: "2026-10-15T19:06:17Z"
+      phase: Successful
+      startedAt: "2026-10-15T19:06:17Z"
+      value: '[0]'
+    - finishedAt: "2026-10-15T19:06:47Z"
+      phase: Successful
+      startedAt: "2026-10-15T19:06:47Z"
+      value: '[0]'
+    metadata:
+      ResolvedPrometheusQuery: |
+        (
+          sum(rate(sa_http_requests_total{service_name="api-gateway",rollout_hash="695fddc58d",status_code=~"5.."}[1m]))
+          or vector(0)
+        )
+        /
+        sum(rate(sa_http_requests_total{service_name="api-gateway",rollout_hash="695fddc58d"}[1m]))
+    name: tasa-de-error
+    phase: Successful
+    successful: 6
+  - count: 6
+    measurements:
+    - finishedAt: "2026-10-15T19:04:17Z"
+      phase: Successful
+      startedAt: "2026-10-15T19:04:17Z"
+      value: '[0.03645833333333336]'
+    - finishedAt: "2026-10-15T19:04:47Z"
+      phase: Successful
+      startedAt: "2026-10-15T19:04:47Z"
+      value: '[0.024865028295571828]'
+    - finishedAt: "2026-10-15T19:05:17Z"
+      phase: Successful
+      startedAt: "2026-10-15T19:05:17Z"
+      value: '[0.02446608040201005]'
+    - finishedAt: "2026-10-15T19:05:47Z"
+      phase: Successful
+      startedAt: "2026-10-15T19:05:47Z"
+      value: '[0.024473350253807105]'
+    - finishedAt: "2026-10-15T19:06:17Z"
+      phase: Successful
+      startedAt: "2026-10-15T19:06:17Z"
+      value: '[0.02494276674743192]'
+    - finishedAt: "2026-10-15T19:06:47Z"
+      phase: Successful
+      startedAt: "2026-10-15T19:06:47Z"
+      value: '[0.029591954573978577]'
+    metadata:
+      ResolvedPrometheusQuery: |
+        histogram_quantile(0.95,
+          sum by (le) (
+            rate(sa_http_request_duration_seconds_bucket{service_name="api-gateway",rollout_hash="695fddc58d"}[1m])
+          )
+        )
+    name: latencia-p95
+    phase: Successful
+    successful: 6
+  phase: Successful
+  runSummary:
+    count: 2
+    successful: 2
+  startedAt: "2026-10-15T19:02:17Z"

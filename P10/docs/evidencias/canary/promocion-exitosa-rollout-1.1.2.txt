@@ -1,0 +1,29 @@
+Name:            sa-platform-api-gateway
+Namespace:       sa-p8
+Status:          ✔ Healthy
+Strategy:        Canary
+  Step:          6/6
+  SetWeight:     100
+  ActualWeight:  100
+Images:          ghcr.io/majosanchez07/practicas-sa-b-202100265/p10-api-gateway:1.1.2 (stable)
+Replicas:
+  Desired:       2
+  Current:       2
+  Updated:       2
+  Ready:         2
+  Available:     2
+
+NAME                                                 KIND         STATUS        AGE    INFO
+⟳ sa-platform-api-gateway                            Rollout      ✔ Healthy     45m    
+├──# revision:2                                                                        
+│  ├──⧉ sa-platform-api-gateway-695fddc58d           ReplicaSet   ✔ Healthy     26m    stable
+│  │  ├──□ sa-platform-api-gateway-695fddc58d-plsrc  Pod          ✔ Running     5m32s  ready:1/1
+│  │  └──□ sa-platform-api-gateway-695fddc58d-n6rjl  Pod          ✔ Running     3m56s  ready:1/1
+│  ├──α sa-platform-api-gateway-695fddc58d-2         AnalysisRun  ✖ Failed      26m    ✖ 4
+│  ├──α sa-platform-api-gateway-695fddc58d-2.1       AnalysisRun  ✖ Failed      22m    ✖ 4
+│  ├──α sa-platform-api-gateway-695fddc58d-2.2       AnalysisRun  ✖ Failed      18m    ✖ 4
+│  ├──α sa-platform-api-gateway-695fddc58d-2.3       AnalysisRun  ✖ Failed      13m    ✖ 4
+│  ├──α sa-platform-api-gateway-695fddc58d-2.4       AnalysisRun  ✖ Failed      9m38s  ✖ 4
+│  └──α sa-platform-api-gateway-695fddc58d-2.5       AnalysisRun  ✔ Successful  5m32s  ✔ 12
+└──# revision:1                                                                        
+   └──⧉ sa-platform-api-gateway-7d58655c5d           ReplicaSet   • ScaledDown  44m    
