@@ -14,6 +14,7 @@
  */
 const http = require('http');
 const { URL } = require('url');
+const log = require('./logger');
 
 /**
  * Crea un middleware que reenvia todo lo que reciba hacia destino, quitando el
@@ -46,6 +47,11 @@ function crearProxy(destino, prefijo, nombre) {
         timeout: 30000,
       },
       (respuesta) => {
+        if (respuesta.statusCode >= 500) {
+          log.error('el servicio aguas abajo respondio con error', {
+            upstream: nombre, route: `${prefijo}${ruta.split('?')[0]}`, status_code: respuesta.statusCode,
+          });
+        }
         res.writeHead(respuesta.statusCode, respuesta.headers);
         respuesta.pipe(res);
       }
@@ -53,6 +59,9 @@ function crearProxy(destino, prefijo, nombre) {
 
     peticion.on('timeout', () => {
       peticion.destroy();
+      log.error('el servicio aguas abajo no respondio a tiempo', {
+        upstream: nombre, route: `${prefijo}${ruta.split('?')[0]}`, status_code: 504,
+      });
       if (!res.headersSent) {
         res.status(504).json({
           error: `${nombre} no respondio a tiempo`,
@@ -62,6 +71,9 @@ function crearProxy(destino, prefijo, nombre) {
     });
 
     peticion.on('error', (err) => {
+      log.error('fallo la conexion con el servicio aguas abajo', {
+        upstream: nombre, route: `${prefijo}${ruta.split('?')[0]}`, status_code: 502, error: err.message,
+      });
       if (!res.headersSent) {
         res.status(502).json({
           error: `${nombre} no disponible`,

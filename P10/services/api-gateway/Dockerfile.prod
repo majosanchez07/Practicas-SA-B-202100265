@@ -39,4 +39,6 @@ USER node
 EXPOSE 8080
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "src/index.js"]
+# Practica 10: telemetria.js se precarga para que OpenTelemetry parchee http
+# y express antes de que la aplicacion los requiera.
+CMD ["node", "-r", "./src/telemetria.js", "src/index.js"]

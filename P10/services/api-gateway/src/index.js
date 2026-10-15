@@ -2,8 +2,16 @@ require('dotenv').config();
 const express = require('express');
 const { crearProxy } = require('./proxy');
 const axios = require('axios');
+const log = require('./logger');
+const { middlewareMetricas } = require('./metricas');
+const { middlewareFallo, falloActivo } = require('./fallo');
 
 const app = express();
+
+// Practica 10: las metricas se registran antes que cualquier ruta para medir
+// tambien lo que el fallo inducido retrasa o rechaza.
+app.use(middlewareMetricas);
+app.use(middlewareFallo);
 
 // No se registra express.json() de forma global a proposito.
 //
@@ -86,9 +94,14 @@ app.use('/notifications', crearProxy(NOTIFICATIONS_SERVICE_URL, '/notifications'
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  console.log(`API Gateway corriendo en puerto ${PORT}`);
-  console.log(`Auth Service     -> ${AUTH_SERVICE_URL}`);
-  console.log(`Books Service    -> ${BOOKS_SERVICE_URL}`);
-  console.log(`Loans Service    -> ${LOANS_SERVICE_URL}`);
-  console.log(`Notifications    -> ${NOTIFICATIONS_SERVICE_URL}`);
+  log.info('api-gateway iniciado', {
+    port: Number(PORT),
+    destinos: {
+      auth: AUTH_SERVICE_URL,
+      books: BOOKS_SERVICE_URL,
+      loans: LOANS_SERVICE_URL,
+      notifications: NOTIFICATIONS_SERVICE_URL,
+    },
+    fallo_inducido: falloActivo,
+  });
 });
