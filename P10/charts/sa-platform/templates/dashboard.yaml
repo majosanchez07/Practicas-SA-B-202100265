@@ -1,0 +1,26 @@
+{{- /*
+Tablero de operacion — Practica 10
+
+El JSON vive en dashboards/operacion.json (exportado de Grafana) y llega a
+Grafana como ConfigMap: el sidecar de Grafana busca en todos los namespaces
+los ConfigMaps con la etiqueta grafana_dashboard y los carga solo. Asi el
+tablero tambien se despliega por GitOps y no se edita a mano en la interfaz.
+*/ -}}
+{{- $obs := .Values.observability | default dict -}}
+{{- if and $obs.enabled $obs.dashboard $obs.dashboard.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sa-platform.fullname" . }}-tablero-operacion
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tablero
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: Biblioteca
+data:
+  operacion.json: |-
+{{ .Files.Get "dashboards/operacion.json" | replace "\"sa-p8\"" (.Values.namespace.name | quote) | indent 4 }}
+{{- end }}
