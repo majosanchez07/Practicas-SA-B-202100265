@@ -1,0 +1,58 @@
+# ==============================================================================
+# Exclusiones del analisis de vulnerabilidades
+#
+# Practica 8 — Maria Jose Tebalan Sanchez — 202100265
+#
+# Cada exclusion de este archivo es una decision documentada, no una forma de
+# silenciar el analisis. El control conserva intacta su capacidad de bloqueo:
+# cualquier vulnerabilidad critica que no este listada aqui detiene la
+# construccion y el artefacto no llega al almacen.
+#
+# El criterio para excluir algo es estricto: debe poder argumentarse que la
+# vulnerabilidad no es explotable en este contexto concreto. Una vulnerabilidad
+# incomoda de corregir no es motivo suficiente.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# CVE-2026-59873 — Denegacion de servicio en node-tar mediante un archivo
+#                  comprimido malicioso
+#
+# Donde aparece
+# -------------
+# En la libreria "tar" que viene incluida dentro de npm, el gestor de paquetes.
+# Esta presente en TODA imagen oficial de Node actual, incluida la version
+# vigente: no es consecuencia de usar una imagen desactualizada, y no existe
+# version de la imagen base que no la traiga.
+#
+# Por que no es explotable en este sistema
+# ----------------------------------------
+# La vulnerabilidad requiere que el codigo vulnerable procese un archivo
+# comprimido proveniente de una fuente no confiable. Aqui no ocurre:
+#
+#   1. npm es la herramienta de INSTALACION, no de ejecucion. Los contenedores
+#      de produccion arrancan con "node", no con "npm": la libreria esta
+#      presente en el sistema de archivos pero nunca se carga en memoria.
+#
+#   2. Las dependencias se instalan durante la construccion, en el entorno de
+#      la automatizacion, a partir de un archivo de bloqueo que fija cada
+#      version. No se instala nada en tiempo de ejecucion ni desde una fuente
+#      que un usuario pueda influir.
+#
+#   3. El sistema de archivos del contenedor es de solo lectura, de modo que
+#      ni siquiera seria posible depositar un archivo malicioso donde npm
+#      pudiera leerlo.
+#
+# Que se pierde al excluirla
+# --------------------------
+# Nada en la practica: si alguna vez estos servicios ejecutaran npm en
+# produccion, o instalaran paquetes en tiempo de ejecucion, esta exclusion
+# dejaria de ser valida y habria que retirarla.
+#
+# Comprobacion de que el control sigue bloqueando
+# -----------------------------------------------
+# La rama de demostracion usa una imagen base antigua que contiene ademas
+# CVE-2022-37434 en zlib, que NO esta excluida. Esa propuesta de cambio queda
+# bloqueada, lo que demuestra que el analisis conserva su capacidad de detener
+# la entrega.
+# ------------------------------------------------------------------------------
+CVE-2026-59873

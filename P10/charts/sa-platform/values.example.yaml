@@ -1,0 +1,70 @@
+# ==============================================================================
+# values.example.yaml — Plantilla de credenciales
+#
+# TODOS LOS VALORES DE ESTE ARCHIVO SON FICTICIOS.
+#
+# Este archivo documenta que credenciales necesita el chart, sin contener
+# ninguna real. El repositorio no versiona secretos: los valores efectivos se
+# entregan al instalar, por cualquiera de estas dos vias.
+#
+# Opcion A — copia local no versionada (recomendada para trabajar):
+#
+#     cp values.example.yaml values.secret.yaml
+#     # editar values.secret.yaml con las credenciales reales
+#     helm upgrade --install sa-platform ./charts/sa-platform \
+#       -f ./charts/sa-platform/values-dev.yaml \
+#       -f ./charts/sa-platform/values.secret.yaml
+#
+#   values.secret.yaml esta incluido en .gitignore.
+#
+# Opcion B — en la linea de comandos, sin archivo intermedio:
+#
+#     helm upgrade --install sa-platform ./charts/sa-platform \
+#       -f ./charts/sa-platform/values-dev.yaml \
+#       --set postgresql.auth.username=biblioteca \
+#       --set postgresql.auth.password="$PGPASS" \
+#       --set postgresql.auth.postgresPassword="$PGADMINPASS" \
+#       --set rabbitmq.auth.username=biblioteca \
+#       --set rabbitmq.auth.password="$RMQPASS" \
+#       --set rabbitmq.auth.erlangCookie="$ERLANGCOOKIE" \
+#       --set secrets.jwtSecretKey="$JWTKEY" \
+#       --set secrets.aesSecretKey="$AESKEY"
+#
+# El chart valida con "required" que estos campos vengan informados: si falta
+# alguno, la instalacion se detiene con un mensaje explicito en lugar de
+# desplegar pods que entrarian en CrashLoopBackOff.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Credenciales de PostgreSQL
+# ------------------------------------------------------------------------------
+postgresql:
+  auth:
+    username: usuario-ficticio
+    password: CAMBIAR-contrasena-ficticia
+    database: biblioteca
+    # Contrasena del superusuario postgres.
+    postgresPassword: CAMBIAR-contrasena-admin-ficticia
+
+# ------------------------------------------------------------------------------
+# Credenciales de RabbitMQ
+# ------------------------------------------------------------------------------
+rabbitmq:
+  auth:
+    username: usuario-ficticio
+    password: CAMBIAR-contrasena-ficticia
+    # Cookie de Erlang: cadena alfanumerica larga.
+    # Generar con: openssl rand -hex 32
+    erlangCookie: CAMBIAR0000ficticia0000erlang0000cookie0000
+
+# ------------------------------------------------------------------------------
+# Secretos de la aplicacion
+# ------------------------------------------------------------------------------
+secrets:
+  # Clave de firma de los JWT que emite auth-service.
+  # Generar con: openssl rand -hex 32
+  jwtSecretKey: CAMBIAR0000ficticia0000jwt0000secret0000key
+
+  # Clave de cifrado AES. Debe medir exactamente 32 caracteres.
+  # Generar con: openssl rand -hex 16
+  aesSecretKey: 0123456789abcdef0123456789abcdef

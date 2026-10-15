@@ -1,0 +1,69 @@
+{{- /*
+================================================================================
+Namespace de trabajo de la plataforma.
+
+Su definicion vive aqui, versionada dentro del chart: nombre, etiquetas comunes
+y la etiqueta que las NetworkPolicies usan para identificar el trafico propio
+del namespace. No se crea con un kubectl create suelto.
+
+Una limitacion de Helm 3 sobre este objeto en concreto
+-----------------------------------------------------
+Helm registra el estado de cada revision en un Secret alojado DENTRO del
+namespace del release, y lo escribe antes de aplicar las plantillas. Eso impide
+que un chart cree por si solo el namespace en el que se registra. Se comprobaron
+las tres alternativas:
+
+  1. Hook de pre-install con hook-delete-policy: before-hook-creation.
+     El hook recrea el namespace y arrastra el Secret del release. helm install
+     terminaba con "STATUS: deployed" y los objetos quedaban corriendo, pero el
+     release desaparecia de helm list y todo helm upgrade fallaba con
+     "has no deployed releases". La anotacion helm.sh/resource-policy: keep no
+     lo evita, y quitar la politica de borrado tampoco: el hook sigue recreando
+     el namespace despues de que Helm escribio el Secret.
+
+  2. Recurso ordinario sin --create-namespace.
+     La instalacion aborta antes de renderizar nada:
+     "create: failed to create: namespaces sa-p5 not found".
+
+  3. Registrar el release en un namespace de gestion aparte.
+     Descartada porque el chart de PostgreSQL de Bitnami ignora
+     namespaceOverride en sus plantillas: la base de datos quedaba fuera de
+     sa-p5, separada de los microservicios y del alcance de las NetworkPolicies.
+
+Como se resuelve
+----------------
+La bandera --create-namespace del comando de instalacion crea el namespace para
+que Helm tenga donde escribir el Secret del release, y namespace.create queda en
+false para que esta plantilla no intente declararlo una segunda vez, lo que
+provocaria el conflicto "namespaces already exists".
+
+    helm install sa-platform ./charts/sa-platform \
+      --namespace sa-p5 --create-namespace \
+      -f values-dev.yaml -f values.secret.yaml
+
+La definicion del namespace sigue siendo parte del chart y se puede renderizar
+en cualquier momento con:
+
+    helm template sa-platform ./charts/sa-platform \
+      --set namespace.create=true --show-only templates/namespace.yaml
+
+Poniendo namespace.create=true, el chart crea el namespace por si mismo; esa es
+la via a usar cuando el release se instala sobre un namespace ya existente.
+================================================================================
+*/ -}}
+{{- if .Values.namespace.create }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    # Etiqueta usada por las NetworkPolicies para identificar el trafico que
+    # nace dentro del propio namespace.
+    kubernetes.io/metadata.name: {{ .Values.namespace.name | quote }}
+    name: {{ .Values.namespace.name | quote }}
+  annotations:
+    # Mantiene el namespace fuera del alcance de helm uninstall, para que
+    # desinstalar el release no borre el namespace con todo su contenido.
+    helm.sh/resource-policy: keep
+{{- end }}

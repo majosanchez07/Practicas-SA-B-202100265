@@ -1,0 +1,165 @@
+# ==============================================================================
+# values-prod.yaml — Ambiente de produccion
+#
+# Uso:
+#   helm upgrade --install sa-platform ./charts/sa-platform \
+#     -f ./charts/sa-platform/values-prod.yaml \
+#     --set postgresql.auth.password=... --set rabbitmq.auth.password=...
+#
+# Diferencias frente a desarrollo: mas replicas y autoescalado activo en todos
+# los servicios, limites de recursos mayores, imagenes con tag inmutable y
+# registro de log reducido a lo relevante.
+# ==============================================================================
+
+global:
+  # En produccion no se usa un tag movil: cada despliegue apunta a una version
+  # concreta, para que un rollback devuelva exactamente el binario anterior.
+  imageTag: "1.0.0"
+
+config:
+  # Nivel de log: en produccion el detalle de cada consulta seria ruido y
+  # ademas un riesgo, porque puede arrastrar datos de los usuarios al log.
+  logLevel: warn
+  environment: production
+  corsOrigins: "https://biblioteca.sa-p5.local"
+
+services:
+  api-gateway:
+    replicaCount: 3
+    image:
+      tag: "1.0.0"
+      pullPolicy: IfNotPresent
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      enabled: true
+      minAvailable: 2
+
+  auth-service:
+    replicaCount: 2
+    image:
+      tag: "1.0.0"
+    resources:
+      requests: { cpu: 100m, memory: 192Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      enabled: true
+      minAvailable: 1
+
+  books-service:
+    replicaCount: 2
+    image:
+      tag: "1.0.0"
+    resources:
+      requests: { cpu: 100m, memory: 192Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      enabled: true
+      minAvailable: 1
+
+  loans-service:
+    replicaCount: 2
+    image:
+      tag: "1.0.0"
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 384Mi }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      enabled: true
+      minAvailable: 1
+
+  notifications-service:
+    replicaCount: 2
+    image:
+      tag: "1.0.0"
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 384Mi }
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    pdb:
+      enabled: true
+      minAvailable: 1
+
+cronjobs:
+  insert:
+    image:
+      tag: "1.0.0"
+    backoffLimit: 3
+  summary:
+    image:
+      tag: "1.0.0"
+    backoffLimit: 3
+
+ingress:
+  host: biblioteca.sa-p5.local
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+
+# La cuota debe cubrir el peor caso: los cinco servicios en su maximo de 5
+# replicas mas las dependencias y los cronjobs. Calculado sobre los limits de
+# este archivo, ese pico asciende a unos 15.9 nucleos y 14.5 Gi, de modo que un
+# techo de 12 nucleos habria detenido el autoescalado contra la cuota en lugar
+# de contra el objetivo de CPU, y la evidencia de escalado habria quedado
+# falseada. Se deja margen por encima del pico calculado.
+resourceQuota:
+  enabled: true
+  hard:
+    requests.cpu: "6"
+    requests.memory: 8Gi
+    limits.cpu: "20"
+    limits.memory: 18Gi
+    pods: "50"
+    persistentvolumeclaims: "8"
+
+limitRange:
+  enabled: true
+  default:
+    cpu: 500m
+    memory: 512Mi
+  defaultRequest:
+    cpu: 100m
+    memory: 128Mi
+  max:
+    cpu: "2"
+    memory: 2Gi
+
+postgresql:
+  primary:
+    persistence:
+      size: 8Gi
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits: { cpu: 2, memory: 2Gi }
+
+rabbitmq:
+  persistence:
+    size: 4Gi
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { cpu: 1, memory: 1Gi }

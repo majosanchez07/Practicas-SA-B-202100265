@@ -1,0 +1,50 @@
+{{- /*
+ConfigMap con toda la configuracion NO sensible de la plataforma, generado por
+el chart a partir de values. Ninguna plantilla lleva estos valores escritos.
+
+Los Deployments lo consumen con envFrom y llevan una anotacion con el checksum
+de este archivo, de modo que al cambiar cualquier valor de aqui el hash cambia,
+el pod template se considera distinto y Kubernetes reinicia los pods afectados.
+*/ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sa-platform.configMapName" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+data:
+  # --- Generales ---
+  LOG_LEVEL: {{ .Values.config.logLevel | default "info" | quote }}
+  ENVIRONMENT: {{ .Values.config.environment | default "development" | quote }}
+  CORS_ORIGINS: {{ .Values.config.corsOrigins | default "*" | quote }}
+  CARNE: {{ .Values.global.carne | default .Values.carne | quote }}
+
+  # --- Broker ---
+  BROKER_EXCHANGE: {{ .Values.config.broker.exchange | quote }}
+  BROKER_QUEUE: {{ .Values.config.broker.queue | quote }}
+  BROKER_ROUTING_KEY_LOAN: {{ .Values.config.broker.routingKeyLoan | quote }}
+  BROKER_ROUTING_KEY_RESUMEN: {{ .Values.config.broker.routingKeyResumen | quote }}
+  BROKER_ROUTING_KEYS: {{ printf "%s,%s" .Values.config.broker.routingKeyLoan .Values.config.broker.routingKeyResumen | quote }}
+
+  # --- JWT (parametros no sensibles; la clave de firma va en el Secret) ---
+  JWT_ALGORITHM: {{ .Values.config.jwt.algorithm | quote }}
+  JWT_EXPIRATION_MINUTES: {{ .Values.config.jwt.expirationMinutes | quote }}
+  JWT_GRACE_PERIOD_MINUTES: {{ .Values.config.jwt.gracePeriodMinutes | quote }}
+
+  # --- Descubrimiento de servicios ---
+  {{- /*
+  Las URL internas se derivan recorriendo el mismo mapa de servicios que genera
+  los Deployments, en lugar de escribirlas a mano: si se agrega o renombra un
+  servicio, estas variables se actualizan solas.
+  */}}
+  {{- range $svc, $cfg := .Values.services }}
+  {{- if and $cfg.enabled (not $cfg.isGateway) }}
+  {{ $svc | upper | replace "-" "_" }}_URL: {{ printf "http://%s:%v" (include "sa-platform.serviceName" (dict "root" $ "svc" $svc)) $cfg.port | quote }}
+  {{- end }}
+  {{- end }}
+
+  {{- /* auth-service espera esta variable con ese nombre exacto. */}}
+  {{- with (index .Values.services "auth-service") }}
+  AUTHORIZATION_SERVICE_URL: {{ printf "http://%s:%v" (include "sa-platform.serviceName" (dict "root" $ "svc" "auth-service")) .port | quote }}
+  {{- end }}

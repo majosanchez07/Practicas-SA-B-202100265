@@ -1,0 +1,58 @@
+{{- /*
+================================================================================
+Ingress — unica puerta de entrada al cluster.
+
+Solo el API Gateway queda expuesto. Los demas microservicios, la base de datos
+y el broker se alcanzan unicamente desde dentro del cluster a traves de sus
+Services de tipo ClusterIP; el enunciado prohibe exponerlos con NodePort o
+LoadBalancer.
+
+El enrutamiento interno hacia cada microservicio lo resuelve el propio gateway
+por path (/auth, /books, /loans, /notifications), de modo que agregar un
+microservicio no obliga a tocar este Ingress.
+================================================================================
+*/ -}}
+{{- if .Values.ingress.enabled }}
+{{- $root := . -}}
+{{- /*
+Se localiza el servicio marcado como puerta de entrada recorriendo el mapa de
+servicios, en lugar de escribir su nombre aqui: si el gateway cambiara de
+nombre bastaria con mover la marca isGateway en values.
+*/}}
+{{- $gateway := "" -}}
+{{- $gatewayPort := 0 -}}
+{{- range $svc, $cfg := .Values.services }}
+{{- if and $cfg.enabled $cfg.isGateway }}
+{{- $gateway = $svc -}}
+{{- $gatewayPort = $cfg.port -}}
+{{- end }}
+{{- end }}
+{{- if not $gateway }}
+{{- fail "Ningun servicio esta marcado con isGateway: true. El Ingress necesita saber cual es la puerta de entrada." }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "sa-platform.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ingress
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className | default "nginx" | quote }}
+  rules:
+    - host: {{ required "ingress.host es obligatorio" .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.path | default "/" }}
+            pathType: {{ .Values.ingress.pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" $gateway) }}
+                port:
+                  number: {{ $gatewayPort }}
+{{- end }}

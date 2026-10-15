@@ -1,0 +1,67 @@
+# ==============================================================================
+# Manifiesto de prueba — viola las TRES politicas a proposito
+#
+# Practica 8 — Maria Jose Tebalan Sanchez — 202100265
+#
+# ESTE POD NO DEBE PODER CREARSE. Su unico proposito es demostrar que las
+# politicas de admision rechazan lo que no cumple, que es uno de los
+# entregables obligatorios de la practica ("Politicas de admision: manifiestos
+# de las politicas y evidencia de un despliegue rechazado").
+#
+# Como usarlo
+# -----------
+#   kubectl apply -f pod-que-viola-las-politicas.yaml
+#
+# La salida esperada es un error de admision de Kyverno enumerando las tres
+# reglas incumplidas. Para guardarla como evidencia:
+#
+#   kubectl apply -f pod-que-viola-las-politicas.yaml \
+#     2>&1 | tee ../../docs/evidencias/politicas/rechazo-admision.txt
+#
+# Que viola exactamente
+# ---------------------
+#   1. prohibir-etiqueta-latest      -> la imagen usa :latest
+#   2. exigir-limites-de-recursos    -> no declara requests ni limits
+#   3. exigir-ejecucion-sin-root     -> corre como root (uid 0), permite
+#                                       escalada de privilegios y conserva
+#                                       todas las capacidades de Linux
+#
+# Si este pod LLEGARA a crearse, significaria que las politicas no estan
+# instaladas, que estan en modo Audit en lugar de Enforce, o que el namespace
+# no coincide con el del match. Comprobar con:
+#
+#   kubectl get clusterpolicies
+#   kubectl describe clusterpolicy prohibir-etiqueta-latest
+# ==============================================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-violador
+  namespace: sa-p8
+  labels:
+    proposito: prueba-de-politicas
+    practica: p8
+  annotations:
+    descripcion: >-
+      Pod de prueba que incumple las tres politicas obligatorias. No debe poder
+      crearse; su rechazo es la evidencia.
+spec:
+  containers:
+    - name: violador
+      # Violacion 1: etiqueta latest — imagen no trazable.
+      image: nginx:latest
+
+      # Violacion 2: sin resources. No declara requests ni limits, de modo que
+      # nada impide que consuma toda la memoria del nodo.
+
+      # Violacion 3: securityContext inseguro en tres frentes.
+      securityContext:
+        # Corre como root: el uid 0 del contenedor es el uid 0 del host.
+        runAsUser: 0
+        runAsNonRoot: false
+        # Permite escalar privilegios mediante binarios setuid.
+        allowPrivilegeEscalation: true
+        # Conserva todas las capacidades de Linux que Docker concede por
+        # defecto, ninguna de las cuales necesita un servidor web.
+        capabilities:
+          drop: []

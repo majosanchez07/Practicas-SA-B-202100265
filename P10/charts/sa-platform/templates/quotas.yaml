@@ -1,0 +1,71 @@
+{{- /*
+================================================================================
+ResourceQuota y LimitRange del namespace.
+
+ResourceQuota acota el consumo TOTAL del namespace: la suma de lo que piden y
+lo que pueden llegar a consumir todos los pods juntos. Es el techo que impide
+que un HPA mal configurado o una prueba de carga agoten el cluster completo.
+
+LimitRange actua sobre CADA contenedor por separado: fija valores por defecto
+para los que no declaren recursos y un maximo que ninguno puede superar.
+
+Los dos se complementan y ninguno sustituye al otro. Ademas, la existencia de
+la ResourceQuota tiene una consecuencia que conviene tener presente: en un
+namespace con cuota de cpu o memoria, Kubernetes rechaza todo pod que no
+declare requests y limits. El LimitRange evita que eso ocurra al proporcionar
+valores por defecto.
+
+Nota sobre el dimensionamiento: los valores deben dejar margen para el maximo
+del HPA. Con cinco servicios que pueden llegar a 5 replicas, la cuota tiene que
+cubrir ese pico o el autoescalado se detendria contra la cuota en lugar de
+contra el objetivo de CPU, y la evidencia de escalado quedaria falseada.
+================================================================================
+*/ -}}
+{{- if .Values.resourceQuota.enabled }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ include "sa-platform.fullname" . }}-quota
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: quota
+spec:
+  hard:
+    {{- range $recurso, $valor := .Values.resourceQuota.hard }}
+    {{ $recurso }}: {{ $valor | quote }}
+    {{- end }}
+{{- end }}
+
+{{- if .Values.limitRange.enabled }}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: {{ include "sa-platform.fullname" . }}-limits
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: limit-range
+spec:
+  limits:
+    - type: Container
+      # Limite aplicado a un contenedor que no declare el suyo.
+      default:
+        cpu: {{ .Values.limitRange.default.cpu | quote }}
+        memory: {{ .Values.limitRange.default.memory | quote }}
+      # Request aplicado a un contenedor que no declare el suyo.
+      defaultRequest:
+        cpu: {{ .Values.limitRange.defaultRequest.cpu | quote }}
+        memory: {{ .Values.limitRange.defaultRequest.memory | quote }}
+      # Techo por contenedor: ninguno puede pedir mas que esto.
+      max:
+        cpu: {{ .Values.limitRange.max.cpu | quote }}
+        memory: {{ .Values.limitRange.max.memory | quote }}
+      {{- with .Values.limitRange.min }}
+      min:
+        cpu: {{ .cpu | quote }}
+        memory: {{ .memory | quote }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,56 @@
+{{- /*
+================================================================================
+PodDisruptionBudget.
+
+Limita cuantos pods puede retirar a la vez una interrupcion voluntaria: drenar
+un nodo, actualizar el cluster o un kubectl drain. No interviene en las
+interrupciones involuntarias, como la caida de un nodo.
+
+Aviso sobre el valor de minAvailable: si iguala o supera el numero de replicas,
+el presupuesto se vuelve imposible de satisfacer y cualquier drenaje del nodo
+queda bloqueado indefinidamente. Por eso se acota al maximo admisible en lugar
+de tomar el valor de values tal cual: en el ambiente de desarrollo, donde
+algunos servicios corren con una sola replica, un minAvailable de 1 dejaria el
+nodo imposible de drenar.
+================================================================================
+*/ -}}
+{{- $root := . -}}
+{{- range $svc, $cfg := .Values.services }}
+{{- if and $cfg.enabled $cfg.pdb.enabled }}
+{{- /*
+Replicas efectivas: si el HPA gobierna el servicio, el piso real es su
+minReplicas; si no, el replicaCount del Deployment.
+*/}}
+{{- $replicas := $cfg.replicaCount | default 1 }}
+{{- if $cfg.autoscaling.enabled }}
+{{- $replicas = $cfg.autoscaling.minReplicas | default 2 }}
+{{- end }}
+{{- $deseado := $cfg.pdb.minAvailable | default 1 }}
+{{- $maximo := sub $replicas 1 }}
+{{- $minAvailable := min $deseado $maximo }}
+{{- if gt (int $minAvailable) 0 }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" $svc) }}
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+  annotations:
+    # Deja constancia de como se obtuvo el valor efectivo.
+    sa-p5/replicas-consideradas: {{ $replicas | quote }}
+    sa-p5/min-available-solicitado: {{ $deseado | quote }}
+spec:
+  minAvailable: {{ $minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $svc) | nindent 6 }}
+{{- else }}
+{{- /*
+Con una sola replica no se emite PodDisruptionBudget: cualquier valor valido
+seria 0, que no aporta proteccion, o 1, que impediria drenar el nodo.
+*/}}
+{{- end }}
+{{- end }}
+{{- end }}

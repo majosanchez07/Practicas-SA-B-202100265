@@ -1,0 +1,83 @@
+{{- /*
+================================================================================
+HorizontalPodAutoscaler.
+
+El enunciado fija minimo 2 replicas, maximo 5 y activacion al 70 % de uso de
+CPU. Requiere metrics-server habilitado en el cluster, que es de donde el HPA
+lee el consumo real de los pods.
+
+El bloque behavior no viene exigido, pero sin el la demostracion bajo carga se
+vuelve confusa: por defecto Kubernetes espera cinco minutos antes de reducir
+replicas, y aqui interesa que el descenso posterior a la prueba de carga sea
+observable dentro de la sesion de evidencia.
+================================================================================
+*/ -}}
+{{- $root := . -}}
+{{- range $svc, $cfg := .Values.services }}
+{{- if and $cfg.enabled $cfg.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" $svc) }}
+  namespace: {{ $root.Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.serviceLabels" (dict "root" $root "svc" $svc) | nindent 4 }}
+spec:
+  {{- /*
+  El objetivo del autoescalado depende de que controlador gobierne el servicio.
+  Los servicios con entrega progresiva no tienen Deployment: su carga de trabajo
+  la declara un Rollout, y apuntar el autoescalado a un Deployment inexistente
+  lo deja en estado degradado de forma permanente -"unable to get the target's
+  current scale"- y arrastra a toda la aplicacion con el.
+  */}}
+  scaleTargetRef:
+    {{- if and $cfg.progressive $cfg.progressive.enabled }}
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    {{- else }}
+    apiVersion: apps/v1
+    kind: Deployment
+    {{- end }}
+    name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" $svc) }}
+
+  minReplicas: {{ $cfg.autoscaling.minReplicas | default 2 }}
+  maxReplicas: {{ $cfg.autoscaling.maxReplicas | default 5 }}
+
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          {{- /*
+          El porcentaje se calcula sobre resources.requests.cpu del contenedor,
+          no sobre el limite: por eso los requests deben ser realistas o el HPA
+          escalaria con demasiada facilidad o no escalaria nunca.
+          */}}
+          averageUtilization: {{ $cfg.autoscaling.targetCPUUtilizationPercentage | default 70 }}
+
+  behavior:
+    scaleUp:
+      # Reacciona rapido al aumento de carga para que la prueba lo evidencie.
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+        - type: Pods
+          value: 2
+          periodSeconds: 30
+      selectPolicy: Max
+    scaleDown:
+      # Un minuto de estabilizacion en lugar de los cinco por defecto: evita
+      # que un valle momentaneo reduzca replicas, pero deja ver el descenso al
+      # cesar la carga.
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+      selectPolicy: Min
+{{- end }}
+{{- end }}
