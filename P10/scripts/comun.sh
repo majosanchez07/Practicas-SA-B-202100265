@@ -11,6 +11,11 @@ ROLLOUT="${ROLLOUT:-sa-platform-api-gateway}"
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EVID="${RAIZ}/docs/evidencias"
 
+# jq.exe en Windows termina cada linea con \r. Pegado a un trace_id, ese
+# caracter invisible hace que ninguna busqueda en Loki coincida (se descubrio
+# asi en la prueba del 15/10). Se elimina siempre.
+jq() { command jq "$@" | tr -d '\r'; }
+
 ahora() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 epoch() { date -u +%s; }
 

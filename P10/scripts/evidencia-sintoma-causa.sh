@@ -68,7 +68,9 @@ if [ "${RECORRIDO_AUTO:-0}" = "1" ]; then
   kubectl -n "${NS_OBS}" port-forward svc/loki 3100:3100 >/dev/null 2>&1 &
   PF_LOKI=$!
   trap 'kill ${PF_PROM} ${PF_AM} ${PF_TEMPO} ${PF_LOKI} 2>/dev/null || true' EXIT
-  sleep 3
+  # Esperar a que Tempo responda y tenga trazas con error (tras un reinicio
+  # tarda en estar listo; con 3 s fijos el recorrido se corto en la prueba).
+  until [ -n "$(curl -s --get http://127.0.0.1:3200/api/search --data-urlencode "q={ status = error }" --data-urlencode limit=1 | jq -r ".traces[0].traceID // empty" 2>/dev/null)" ]; do sleep 2; done
 
   # 1. Metricas: que ruta falla en el gateway y que servicio interno la origina.
   RUTA=$(curl -s --get "http://127.0.0.1:9090/api/v1/query" --data-urlencode \
@@ -83,11 +85,13 @@ if [ "${RECORRIDO_AUTO:-0}" = "1" ]; then
   AHORA=$(epoch)
   TID=$(curl -s --get "http://127.0.0.1:3200/api/search" \
     --data-urlencode "q={ resource.service.name = \"${SVC}\" && status = error }" \
-    --data-urlencode "start=$((AHORA-600))" --data-urlencode "end=${AHORA}" --data-urlencode limit=1 \
+    --data-urlencode limit=1 \
     | jq -r '.traces[0].traceID')
+  # Tempo omite los ceros iniciales del ID; los registros guardan los 32 digitos.
+  TID=$(printf '%32s' "${TID}" | tr ' ' '0')
   curl -s -H 'Accept: application/json' "http://127.0.0.1:3200/api/traces/${TID}" > "${EVID}/sintoma-causa/traza-${TID}.json"
   SPAN=$(jq -r --arg s "${SVC}" '[.batches[] | select(any(.resource.attributes[]; .key=="service.name" and .value.stringValue==$s))
-          | .scopeSpans[].spans[] | select(.status.code=="STATUS_CODE_ERROR")] | first
+          | .scopeSpans[].spans[] | select(.status.code=="STATUS_CODE_ERROR" and .kind=="SPAN_KIND_SERVER")] | first
           | "\(.name) duracion=\(((.endTimeUnixNano|tonumber)-(.startTimeUnixNano|tonumber))/1000000|floor)ms codigo=\([.attributes[] | select(.key|test("status_code")) | .value.intValue] | first)"' \
           "${EVID}/sintoma-causa/traza-${TID}.json")
   SERVICIOS=$(jq -r '[.batches[].resource.attributes[] | select(.key=="service.name") | .value.stringValue] | unique | join(" -> ")' "${EVID}/sintoma-causa/traza-${TID}.json")
@@ -96,7 +100,7 @@ if [ "${RECORRIDO_AUTO:-0}" = "1" ]; then
   # 3. Registros: el error de esa traza, consultado por campo en Loki.
   LINEA=$(curl -s --get "http://127.0.0.1:3100/loki/api/v1/query_range" \
     --data-urlencode "query={namespace=\"${NS_APP}\", container=\"${SVC}\"} | json | trace_id=\"${TID}\" | level=\"error\"" \
-    --data-urlencode "start=$(( AHORA - 900 ))000000000" | jq -r '.data.result[0].values[0][1]')
+    --data-urlencode "start=$(( AHORA - 7200 ))000000000" | jq -r '.data.result[0].values[0][1]')
   echo "${LINEA}" > "${EVID}/sintoma-causa/registro-${TID}.json"
   registro "PASO 3 (registros): ${LINEA} (t+$(( $(epoch) - T_INICIO_RECORRIDO ))s)"
 else
