@@ -20,6 +20,7 @@ import json
 import logging
 import os
 import random
+import socket
 import sys
 import time
 from datetime import datetime, timezone
@@ -136,6 +137,8 @@ def configurar(app, engine):
             "service.namespace": "biblioteca",
             "service.version": os.getenv("SERVICE_VERSION", "dev"),
             "rollout.hash": os.getenv("ROLLOUT_HASH", "none"),
+            # Una serie por pod (ver telemetria.js del gateway).
+            "service.instance.id": os.getenv("POD_NAME", socket.gethostname()),
         })
         proveedor = TracerProvider(resource=recurso)
         proveedor.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
