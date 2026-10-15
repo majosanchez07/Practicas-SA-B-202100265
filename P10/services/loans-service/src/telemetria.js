@@ -33,6 +33,10 @@ if (process.env.OTEL_SDK_DISABLED !== 'true') {
       'service.namespace': 'biblioteca',
       'service.version': process.env.SERVICE_VERSION || 'dev',
       'rollout.hash': process.env.ROLLOUT_HASH || 'none',
+      // Una serie por pod: sin esto, las replicas publican contadores con las
+      // mismas etiquetas y Prometheus los mezcla en una sola serie que sube y
+      // baja, lo que interpreta como reinicios y dispara rate().
+      'service.instance.id': process.env.POD_NAME || require('os').hostname(),
     }),
     traceExporter: new OTLPTraceExporter(),
     metricReader: new PeriodicExportingMetricReader({

@@ -8,9 +8,12 @@ const Loan = require('./models/loan');
 const { registrarHealth } = require('./health');
 const broker = require('./broker');
 const log = require('./logger');
+const { middlewareMetricas } = require('./metricas');
 
 async function startServer() {
   const app = express();
+  // Practica 10: antes de Apollo para medir tambien las peticiones GraphQL.
+  app.use(middlewareMetricas);
 
   const server = new ApolloServer({ typeDefs, resolvers });
   await server.start();
