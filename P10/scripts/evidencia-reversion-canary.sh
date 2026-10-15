@@ -44,8 +44,8 @@ Q_P95="histogram_quantile(0.95, sum by (le) (rate(sa_http_request_duration_secon
 while true; do
   FASE="$(kubectl -n "${NS_APP}" get rollout "${ROLLOUT}" -o jsonpath='{.status.phase}')"
   ABORT="$(kubectl -n "${NS_APP}" get rollout "${ROLLOUT}" -o jsonpath='{.status.abort}')"
-  PESO="$(kubectl -n "${NS_APP}" get rollout "${ROLLOUT}" -o jsonpath='{.status.canary.weights.canary.weight}' 2>/dev/null || echo '?')"
-  registro "t+$(( $(epoch) - T0 ))s fase=${FASE} abort=${ABORT:-false} peso_canary=${PESO:-?} error_candidata=$(promql "${Q_ERR}") p95_candidata_s=$(promql "${Q_P95}")"
+  PESO="$(kubectl -n "${NS_APP}" get rollout "${ROLLOUT}" -o jsonpath='{.status.currentStepIndex}')"
+  registro "t+$(( $(epoch) - T0 ))s fase=${FASE} abort=${ABORT:-false} paso=${PESO:-?} error_candidata=$(promql "${Q_ERR}") p95_candidata_s=$(promql "${Q_P95}")"
   if [ "${ABORT}" = "true" ] || [ "${FASE}" = "Degraded" ]; then
     break
   fi
@@ -58,10 +58,13 @@ done
 T_ABORT=$(epoch)
 registro "ABORTADO a los $(( T_ABORT - T0 )) s del inicio del canary"
 
-until [ "$(kubectl -n "${NS_APP}" get rollout "${ROLLOUT}" -o jsonpath='{.status.canary.weights.canary.weight}' 2>/dev/null || echo 0)" = "0" ]; do
+# Sin traffic routing el peso no se publica en status.canary.weights: la
+# senal de que todo el trafico volvio a la estable es que el ReplicaSet
+# candidato queda sin replicas listas.
+until [ "$(kubectl -n "${NS_APP}" get rs -l rollouts-pod-template-hash="${CANARY}" -o jsonpath='{.items[0].status.readyReplicas}')" = "" ]; do
   sleep 2
 done
-registro "Trafico del canary en 0%: 100% en la version estable ${REV_INICIAL} a los $(( $(epoch) - T0 )) s"
+registro "Candidata sin replicas: 100% del trafico en la version estable ${REV_INICIAL} a los $(( $(epoch) - T0 )) s"
 
 AR="$(kubectl -n "${NS_APP}" get analysisrun -l rollouts-pod-template-hash="${CANARY}" \
       --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}')"
