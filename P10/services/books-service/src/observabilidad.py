@@ -123,7 +123,6 @@ def configurar(app, engine):
     if os.getenv("OTEL_SDK_DISABLED", "false").lower() != "true":
         from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
         from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
         from opentelemetry.sdk.metrics import MeterProvider
         from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
@@ -156,9 +155,7 @@ def configurar(app, engine):
             metric_readers=[PeriodicExportingMetricReader(OTLPMetricExporter(), export_interval_millis=10000)],
         ))
 
-        FastAPIInstrumentor.instrument_app(app, excluded_urls="health,metrics")
         SQLAlchemyInstrumentor().instrument(engine=engine)
-
 
     @app.middleware("http")
     async def fallo_inducido(request, call_next):
@@ -192,6 +189,13 @@ def configurar(app, engine):
             atributos = {"route": ruta_de(request.url.path), "method": request.method, "status_code": str(codigo)}
             _peticiones.add(1, atributos)
             _duracion.record(time.perf_counter() - inicio, atributos)
+
+    # La instrumentacion de FastAPI se registra AL FINAL para quedar por fuera
+    # de los dos middlewares anteriores: el 503 inducido ocurre dentro del span
+    # del servidor, que lo marca como error, y su registro lleva trace_id.
+    if os.getenv("OTEL_SDK_DISABLED", "false").lower() != "true":
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        FastAPIInstrumentor.instrument_app(app, excluded_urls="health,metrics")
 
     registrar(logging.INFO, "books-service iniciado",
               fallo_inducido=FALLO_ACTIVO)
