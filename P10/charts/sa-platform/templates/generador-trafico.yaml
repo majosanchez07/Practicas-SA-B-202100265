@@ -42,6 +42,12 @@ data:
         usuarios: { executor: 'constant-vus', vus: Number(__ENV.VUS || 4), duration: '87600h' },
       },
       discardResponseBodies: true,
+      // Una conexion por peticion. kube-proxy balancea por CONEXION: con
+      // keep-alive, las conexiones de cada usuario virtual quedan fijadas a los
+      // pods que existian al arrancar y un pod canary nuevo no recibe nada. Asi
+      // ocurrio en la primera promocion de 1.1.2: 39 peticiones al candidato en
+      // 10 minutos, consultas en NaN y aborto por falta de datos.
+      noConnectionReuse: true,
     };
 
     const BASE = __ENV.BASE;
