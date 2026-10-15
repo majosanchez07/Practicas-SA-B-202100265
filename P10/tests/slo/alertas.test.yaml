@@ -1,0 +1,106 @@
+# ==============================================================================
+# Pruebas unitarias de las alertas por consumo del presupuesto — Practica 10
+#
+# promtool evalua las reglas REALES del chart (renderizadas a reglas.yaml)
+# contra series sinteticas, sin cluster. Se ejecutan en el pipeline:
+#
+#   helm template ... | yq 'select(.kind=="PrometheusRule") | .spec' > reglas.yaml
+#   promtool test rules alertas.test.yaml
+#
+# Lo que demuestran:
+#   1. Con el sistema sano no dispara nada (ninguna alerta es ruido).
+#   2. Un 30% de errores dispara la alerta critica, pero NO al instante: la
+#      ventana de 1 h necesita ~15 min de fallo para superar 14.4 x 0.5%.
+#      Ese retraso es el precio de no alertar por picos de un minuto, y se
+#      discute en el informe de operacion.
+#   3. Un pico breve (3 min) no dispara: la ventana larga lo absorbe.
+#   4. La latencia lenta dispara su propia alerta, no la de disponibilidad.
+# ==============================================================================
+rule_files:
+  - reglas.yaml
+
+evaluation_interval: 30s
+
+tests:
+  # ---------------------------------------------------------------------------
+  # 1 y 2: 60 min sanos (10 peticiones/s, 0 errores) y luego 30% de errores.
+  # ---------------------------------------------------------------------------
+  - interval: 1m
+    input_series:
+      - series: 'sa_http_requests_total{service_name="api-gateway",status_code="200"}'
+        values: '0+600x60 36420+420x40'
+      - series: 'sa_http_requests_total{service_name="api-gateway",status_code="503"}'
+        values: '0+0x60 180+180x40'
+      - series: 'sa_http_request_duration_seconds_bucket{service_name="api-gateway",le="0.3"}'
+        values: '0+600x100'
+      - series: 'sa_http_request_duration_seconds_count{service_name="api-gateway"}'
+        values: '0+600x100'
+    alert_rule_test:
+      # Sano: nada.
+      - eval_time: 55m
+        alertname: SLODisponibilidadConsumoRapido
+        exp_alerts: []
+      # 8 min de fallo: la ventana de 1 h aun esta en ~4% (< 7.2%).
+      - eval_time: 68m
+        alertname: SLODisponibilidadConsumoRapido
+        exp_alerts: []
+      # 22 min de fallo: 11% en 1 h y 30% en 5 min -> dispara.
+      - eval_time: 82m
+        alertname: SLODisponibilidadConsumoRapido
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              slo: disponibilidad
+            exp_annotations:
+              summary: "Los usuarios estan recibiendo errores: el presupuesto de disponibilidad se consume 14 veces mas rapido de lo sostenible"
+              description: "Mas del 7.2% de las peticiones de la ultima hora fallaron (maximo sostenible 0.5%). Si sigue asi, el presupuesto del mes se agota en unos 2 dias. Valor exacto: tablero de operacion, fila SLO."
+              por_que_intervenir: "Cada hora a este ritmo gasta el 2% del presupuesto mensual. No se resuelve sola: alguien debe encontrar el servicio que falla."
+              runbook_url: "https://github.com/majosanchez07/Practicas-SA-B-202100265/blob/main/P10/docs/runbooks/slo-disponibilidad-consumo-rapido.md"
+      # La latencia sigue sana: su alerta no debe dispararse por errores.
+      - eval_time: 82m
+        alertname: SLOLatenciaConsumoRapido
+        exp_alerts: []
+
+  # ---------------------------------------------------------------------------
+  # 3: pico de 3 minutos con 50% de errores dentro de una hora sana.
+  # ---------------------------------------------------------------------------
+  - interval: 1m
+    input_series:
+      - series: 'sa_http_requests_total{service_name="api-gateway",status_code="200"}'
+        values: '0+600x60 36300+300x3 37200+600x20'
+      - series: 'sa_http_requests_total{service_name="api-gateway",status_code="503"}'
+        values: '0+0x60 300+300x3 1200+0x20'
+    alert_rule_test:
+      - eval_time: 64m
+        alertname: SLODisponibilidadConsumoRapido
+        exp_alerts: []
+      - eval_time: 75m
+        alertname: SLODisponibilidadConsumoRapido
+        exp_alerts: []
+
+  # ---------------------------------------------------------------------------
+  # 4: sin errores pero con el 90% de las peticiones por encima de 300 ms.
+  # ---------------------------------------------------------------------------
+  - interval: 1m
+    input_series:
+      - series: 'sa_http_requests_total{service_name="api-gateway",status_code="200"}'
+        values: '0+600x60'
+      - series: 'sa_http_request_duration_seconds_bucket{service_name="api-gateway",le="0.3"}'
+        values: '0+60x60'
+      - series: 'sa_http_request_duration_seconds_count{service_name="api-gateway"}'
+        values: '0+600x60'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: SLOLatenciaConsumoRapido
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              slo: latencia
+            exp_annotations:
+              summary: "Los usuarios esperan demasiado: el presupuesto de latencia se consume 14 veces mas rapido de lo sostenible"
+              description: "Mas del 72% de las peticiones de la ultima hora tardaron mas de 300 ms (maximo sostenible 5%)."
+              por_que_intervenir: "Con la mayoria de peticiones lentas el sistema es inutilizable aunque no devuelva errores; ningun mecanismo automatico lo corrige."
+              runbook_url: "https://github.com/majosanchez07/Practicas-SA-B-202100265/blob/main/P10/docs/runbooks/slo-latencia-consumo-rapido.md"
+      - eval_time: 30m
+        alertname: SLODisponibilidadConsumoRapido
+        exp_alerts: []

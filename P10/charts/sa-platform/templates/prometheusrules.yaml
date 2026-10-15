@@ -140,7 +140,7 @@ spec:
             slo: disponibilidad
           annotations:
             summary: "Los usuarios estan recibiendo errores: el presupuesto de disponibilidad se consume 14 veces mas rapido de lo sostenible"
-            description: "{{ "{{" }} $value | humanizePercentage {{ "}}" }} de las peticiones de la ultima hora fallaron (maximo sostenible {{ printf "%.1f" (mulf $presDisp 100) }}%). Si sigue asi, el presupuesto del mes se agota en unos 2 dias."
+            description: "Mas del {{ printf "%.1f" (mulf $presDisp 1440) }}% de las peticiones de la ultima hora fallaron (maximo sostenible {{ printf "%.1f" (mulf $presDisp 100) }}%). Si sigue asi, el presupuesto del mes se agota en unos 2 dias. Valor exacto: tablero de operacion, fila SLO."
             por_que_intervenir: "Cada hora a este ritmo gasta el 2% del presupuesto mensual. No se resuelve sola: alguien debe encontrar el servicio que falla."
             runbook_url: {{ printf "%s/slo-disponibilidad-consumo-rapido.md" $runbooks | quote }}
 
@@ -157,7 +157,7 @@ spec:
             slo: disponibilidad
           annotations:
             summary: "Fallo parcial sostenido: el presupuesto de disponibilidad se consume 6 veces mas rapido de lo sostenible"
-            description: "{{ "{{" }} $value | humanizePercentage {{ "}}" }} de error en las ultimas 6 horas. A este ritmo el presupuesto mensual se agota en unos 5 dias."
+            description: "Mas del {{ printf "%.1f" (mulf $presDisp 600) }}% de error sostenido durante 6 horas. A este ritmo el presupuesto mensual se agota en unos 5 dias."
             por_que_intervenir: "Un error pequeno y constante pasa desapercibido en el tablero pero gasta el 5% del presupuesto cada 6 horas."
             runbook_url: {{ printf "%s/slo-disponibilidad-consumo-sostenido.md" $runbooks | quote }}
 
@@ -172,7 +172,7 @@ spec:
             slo: latencia
           annotations:
             summary: "Los usuarios esperan demasiado: el presupuesto de latencia se consume 14 veces mas rapido de lo sostenible"
-            description: "{{ "{{" }} $value | humanizePercentage {{ "}}" }} de las peticiones de la ultima hora tardaron mas de {{ printf "%.0f" (mulf $slo.latencia.umbralSegundos 1000) }} ms."
+            description: "Mas del {{ printf "%.0f" (mulf $presLat 1440) }}% de las peticiones de la ultima hora tardaron mas de {{ printf "%.0f" (mulf $slo.latencia.umbralSegundos 1000) }} ms (maximo sostenible {{ printf "%.0f" (mulf $presLat 100) }}%)."
             por_que_intervenir: "Con la mayoria de peticiones lentas el sistema es inutilizable aunque no devuelva errores; ningun mecanismo automatico lo corrige."
             runbook_url: {{ printf "%s/slo-latencia-consumo-rapido.md" $runbooks | quote }}
 
@@ -187,7 +187,7 @@ spec:
             slo: latencia
           annotations:
             summary: "Degradacion de latencia sostenida durante horas"
-            description: "{{ "{{" }} $value | humanizePercentage {{ "}}" }} de las peticiones de las ultimas 6 horas fueron lentas."
+            description: "Mas del {{ printf "%.0f" (mulf $presLat 600) }}% de las peticiones fueron lentas durante 6 horas."
             por_que_intervenir: "Indica una regresion que ya llego a todos los usuarios (no la detuvo el canary) o un recurso que se esta agotando."
             runbook_url: {{ printf "%s/slo-latencia-consumo-sostenido.md" $runbooks | quote }}
 {{- end }}
