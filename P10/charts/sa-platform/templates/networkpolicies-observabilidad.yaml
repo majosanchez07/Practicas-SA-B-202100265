@@ -1,0 +1,123 @@
+{{- /*
+================================================================================
+Politicas de red de la Practica 10
+
+El namespace parte de "denegar todo" (networkpolicies.yaml). La observabilidad
+abre tres caminos nuevos, y solo esos:
+
+  1. Todos los pods -> Collector (namespace observabilidad, OTLP/HTTP 4318).
+  2. loans-service -> books-service: la consulta de disponibilidad que crea la
+     cadena de tres servicios bajo una sola traza. Hasta la P9 el gateway era
+     el unico origen admitido hacia los microservicios.
+  3. Generador de trafico -> api-gateway.
+
+Prometheus no necesita entrar al namespace: recolecta del Collector, que vive
+en observabilidad. Promtail lee los registros desde el disco del nodo.
+================================================================================
+*/ -}}
+{{- $obs := .Values.observability | default dict -}}
+{{- if and .Values.networkPolicies.enabled $obs.enabled }}
+{{- $root := . -}}
+{{- $ns := .Values.namespace.name -}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.fullname" . }}-allow-otlp
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $obs.namespace | default "observabilidad" }}
+      ports:
+        - protocol: TCP
+          port: 4318
+{{- $loans := index .Values.services "loans-service" | default dict }}
+{{- $books := index .Values.services "books-service" | default dict }}
+{{- if and $loans.enabled $books.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" "loans-service") }}-allow-to-books
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" "loans-service") | nindent 6 }}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" "books-service") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ $books.port }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.serviceName" (dict "root" $root "svc" "books-service") }}-allow-from-loans
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" "books-service") | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" "loans-service") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ $books.port }}
+{{- end }}
+{{- if and $obs.trafficGenerator $obs.trafficGenerator.enabled }}
+{{- range $svc, $cfg := .Values.services }}
+{{- if and $cfg.enabled $cfg.isGateway }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sa-platform.fullname" $root }}-generador-trafico
+  namespace: {{ $ns }}
+  labels:
+    {{- include "sa-platform.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: generador-trafico
+  policyTypes:
+    - Egress
+    - Ingress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "sa-platform.serviceSelectorLabels" (dict "root" $root "svc" $svc) | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ $cfg.port }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

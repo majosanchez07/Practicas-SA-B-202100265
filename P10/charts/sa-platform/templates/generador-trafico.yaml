@@ -1,0 +1,127 @@
+{{- /*
+================================================================================
+Generador de trafico permanente — Practica 10
+
+El canary se decide ahora con metricas del trafico real. En produccion ese
+trafico lo ponen los usuarios; en este entorno no hay usuarios, de modo que un
+k6 permanente hace de ellos: navega el catalogo y pide prestamos a traves del
+gateway, exactamente por el mismo camino que un cliente.
+
+La diferencia con las pruebas de la P8 es importante: este pod NO emite ningun
+veredicto. No sabe si hay un canary en curso ni que version atiende cada
+peticion; solo genera uso. Quien juzga es el analisis, mirando lo que la
+version candidata hizo con ese uso.
+================================================================================
+*/ -}}
+{{- $obs := .Values.observability | default dict -}}
+{{- $gen := $obs.trafficGenerator | default dict -}}
+{{- if and $obs.enabled $gen.enabled }}
+{{- $nombre := printf "%s-generador-trafico" (include "sa-platform.fullname" .) -}}
+{{- $gateway := "" -}}
+{{- $puerto := 8080 -}}
+{{- range $svc, $cfg := .Values.services }}
+{{- if and $cfg.enabled $cfg.isGateway }}{{ $gateway = $svc }}{{ $puerto = $cfg.port }}{{ end }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $nombre }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: generador-trafico
+data:
+  usuarios.js: |
+    import http from 'k6/http';
+    import { sleep } from 'k6';
+
+    // Sin thresholds a proposito: este script no aprueba ni reprueba nada.
+    export const options = {
+      scenarios: {
+        usuarios: { executor: 'constant-vus', vus: Number(__ENV.VUS || 4), duration: '87600h' },
+      },
+      discardResponseBodies: true,
+    };
+
+    const BASE = __ENV.BASE;
+    const JSON_HDR = { headers: { 'Content-Type': 'application/json' }, timeout: '10s' };
+
+    export default function () {
+      // 1. Navegar el catalogo (la accion mas frecuente de un usuario).
+      http.post(`${BASE}/books/graphql`,
+        JSON.stringify({ query: '{ books { id title available } }' }), JSON_HDR);
+
+      // 2. Consultar un libro concreto.
+      const libro = 1 + Math.floor(Math.random() * 20);
+      http.post(`${BASE}/books/graphql`,
+        JSON.stringify({ query: `{ book(id: ${libro}) { id title available } }` }), JSON_HDR);
+
+      // 3. Uno de cada tres usuarios pide un prestamo: atraviesa
+      //    gateway -> loans-service -> books-service bajo una sola traza.
+      if (Math.random() < 0.33) {
+        http.post(`${BASE}/loans/graphql`, JSON.stringify({
+          query: `mutation { createLoan(userId: ${1 + Math.floor(Math.random() * 50)}, bookId: ${libro}) { id status } }`,
+        }), JSON_HDR);
+      }
+      sleep(1);
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $nombre }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "sa-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: generador-trafico
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: generador-trafico
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: generador-trafico
+      annotations:
+        checksum/script: {{ $gen | toJson | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 12345
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: k6
+          image: {{ $gen.image | quote }}
+          args: ["run", "--quiet", "--no-summary", "/scripts/usuarios.js"]
+          env:
+            - name: BASE
+              value: {{ printf "http://%s:%v" (include "sa-platform.serviceName" (dict "root" . "svc" $gateway)) $puerto | quote }}
+            - name: VUS
+              value: {{ $gen.vus | default 4 | quote }}
+          resources:
+            {{- toYaml $gen.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 12345
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ $nombre }}
+        - name: tmp
+          emptyDir: {}
+{{- end }}
