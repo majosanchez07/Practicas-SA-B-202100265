@@ -20,9 +20,9 @@ sintéticas y pasa a decidirse con métricas reales de la versión candidata.
 | Consultas del análisis | Tasa de error (éxito si `< 0.01`): `(sum(rate(sa_http_requests_total{service_name="api-gateway",rollout_hash="{{args.canary-hash}}",status_code=~"5.."}[1m])) or vector(0)) / sum(rate(sa_http_requests_total{service_name="api-gateway",rollout_hash="{{args.canary-hash}}"}[1m]))` · p95 (éxito si `< 0.5` s): `histogram_quantile(0.95, sum by (le) (rate(sa_http_request_duration_seconds_bucket{service_name="api-gateway",rollout_hash="{{args.canary-hash}}"}[1m])))` |
 | SLO declarados | **Disponibilidad:** 99.5 % de peticiones de usuario sin 5xx, ventana móvil de 30 días · **Latencia:** 95 % de peticiones en menos de 300 ms, ventana móvil de 30 días ([justificación](docs/slo.md)) |
 | Reglas de alerta | [P10/charts/sa-platform/templates/prometheusrules.yaml](charts/sa-platform/templates/prometheusrules.yaml) (PrometheusRule `sa-platform-slo`) · pruebas: [P10/tests/slo/alertas.test.yaml](tests/slo/alertas.test.yaml) |
-| Tablero | [P10/charts/sa-platform/dashboards/operacion.json](charts/sa-platform/dashboards/operacion.json) · captura: ⏱ PENDIENTE (`docs/evidencias/capturas/tablero-operacion.png`) |
-| Reversión por métricas | Rollout **`sa-platform-api-gateway`** · AnalysisRun: ⏱ PENDIENTE (lo registra [evidencia-reversion-canary.sh](scripts/evidencia-reversion-canary.sh) en `docs/evidencias/canary/`) |
-| Recorrido síntoma a causa | ⏱ PENDIENTE: ruta `docs/evidencias/sintoma-causa/recorrido-<fecha>.log` y tiempo medido (lo genera [evidencia-sintoma-causa.sh](scripts/evidencia-sintoma-causa.sh)) |
+| Tablero | [P10/charts/sa-platform/dashboards/operacion.json](charts/sa-platform/dashboards/operacion.json) · captura en operación: [docs/evidencias/capturas/tablero-operacion.png](docs/evidencias/capturas/tablero-operacion.png) |
+| Reversión por métricas | AnalysisRun fallido **`sa-platform-api-gateway-5b97d8df46-3`** · Rollout **`sa-platform-api-gateway`** (namespace `sa-p8`). Error de la candidata 10.7 % y 12.1 %, p95 0.99 s; abortado a los 2 min 29 s sin intervención · [AnalysisRun](docs/evidencias/canary/analysisrun-sa-platform-api-gateway-5b97d8df46-3.yaml) · [registro](docs/evidencias/canary/reversion-20261015T190750Z.log) · [Rollout final](docs/evidencias/canary/rollout-final-20261015T190750Z.txt) |
+| Recorrido síntoma a causa | [docs/evidencias/sintoma-causa/recorrido-20261015T191705Z.log](docs/evidencias/sintoma-causa/recorrido-20261015T191705Z.log) · **alerta → registro: 3 s** (métricas t+1 s, traza t+2 s, registro t+3 s) · detección: primera señal en 13 s, alerta en 29 min 8 s · capturas [alerta](docs/evidencias/capturas/recorrido-1-alerta-alertmanager.png), [traza](docs/evidencias/capturas/recorrido-2-traza-tempo.png), [registro](docs/evidencias/capturas/recorrido-3-registro-loki.png) |
 | Video demostrativo | ⏱ PENDIENTE: URL. Minutaje en la [sección Video](#video-demostrativo) |
 
 ## Documentos
@@ -76,14 +76,16 @@ P10/
 
 ## Video demostrativo
 
-URL: ⏱ PENDIENTE
+URL: ⏱ PENDIENTE (lo graba la estudiante)
 
-| Minuto | Punto demostrado |
-|---|---|
-| ⏱ | Stack desplegado por GitOps: aplicaciones `observabilidad-*` en ArgoCD |
-| ⏱ | Una petición de préstamo como una sola traza (gateway → loans → books → PostgreSQL) |
-| ⏱ | De la traza a sus registros y del registro a su traza |
-| ⏱ | Tablero de operación por señales de oro y métricas de negocio |
-| ⏱ | AnalysisTemplate por Prometheus y reversión del canary por métricas |
-| ⏱ | Fallo en books-service, alerta por consumo del presupuesto y recorrido alerta → traza → registro cronometrado |
-| ⏱ | Recuperación y resumen de tiempos medidos |
+Minutaje propuesto (5 a 8 minutos). Los minutos se ajustan al grabar:
+
+| Minuto | Punto demostrado | Qué mostrar |
+|---|---|---|
+| 0:00 | Stack desplegado por GitOps | ArgoCD: las seis aplicaciones `observabilidad-*` y `sa-platform` en Synced/Healthy |
+| 0:45 | Una petición, una traza | Tempo: un préstamo como traza única api-gateway → loans-service → books-service → PostgreSQL |
+| 1:45 | Traza ↔ registro | Desde el span, *Logs for this span*; desde el registro, el `trace_id` abre la traza |
+| 2:30 | Tablero de operación | Las filas por señal de oro y las métricas de negocio (préstamos creados y rechazados) |
+| 3:30 | Canary por métricas | El AnalysisTemplate (proveedor prometheus, sin Jobs) y el AnalysisRun `…-5b97d8df46-3` fallido con sus mediciones |
+| 4:45 | Del síntoma a la causa | La alerta con su runbook → fila Errores → traza en error → registro "pool de conexiones agotado" |
+| 6:15 | Recuperación y tiempos | Los registros de evidencia: reversión en 2 min 29 s, alerta → registro en 3 s, recuperación en 5 min 11 s |
