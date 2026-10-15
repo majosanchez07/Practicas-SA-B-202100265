@@ -1,0 +1,1 @@
+{"timestamp": "2026-10-15T19:31:18.094705+00:00", "level": "error", "service": "books-service", "logger": "books-service", "message": "pool de conexiones agotado: no se obtuvo conexion a la base de datos", "route": "/graphql", "status_code": 503, "espera_ms": 400, "causa": "fallo-inducido-p10", "trace_id": "0013d923c9c1a44cd97c4a21c59615aa", "span_id": "e051ac53844995a9"}
