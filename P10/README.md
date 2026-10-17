@@ -23,7 +23,7 @@ sintéticas y pasa a decidirse con métricas reales de la versión candidata.
 | Tablero | [P10/charts/sa-platform/dashboards/operacion.json](charts/sa-platform/dashboards/operacion.json) · captura en operación: [docs/evidencias/capturas/tablero-operacion.png](docs/evidencias/capturas/tablero-operacion.png) |
 | Reversión por métricas | AnalysisRun fallido **`sa-platform-api-gateway-5b97d8df46-3`** · Rollout **`sa-platform-api-gateway`** (namespace `sa-p8`). Error de la candidata 10.7 % y 12.1 %, p95 0.99 s; abortado a los 2 min 29 s sin intervención · [AnalysisRun](docs/evidencias/canary/analysisrun-sa-platform-api-gateway-5b97d8df46-3.yaml) · [registro](docs/evidencias/canary/reversion-20261015T190750Z.log) · [Rollout final](docs/evidencias/canary/rollout-final-20261015T190750Z.txt) |
 | Recorrido síntoma a causa | [docs/evidencias/sintoma-causa/recorrido-20261015T191705Z.log](docs/evidencias/sintoma-causa/recorrido-20261015T191705Z.log) · **alerta → registro: 3 s** (métricas t+1 s, traza t+2 s, registro t+3 s) · detección: primera señal en 13 s, alerta en 29 min 8 s · capturas [alerta](docs/evidencias/capturas/recorrido-1-alerta-alertmanager.png), [traza](docs/evidencias/capturas/recorrido-2-traza-tempo.png), [registro](docs/evidencias/capturas/recorrido-3-registro-loki.png) |
-| Video demostrativo | ⏱ PENDIENTE: URL. Minutaje en la [sección Video](#video-demostrativo) |
+| Video demostrativo | [Carpeta de grabaciones](https://drive.google.com/drive/folders/1kOchO-0QgwzYgSWx3mVyXL2yfm4uJ3GY?usp=sharing). Minutaje en la [sección Video](#video-demostrativo) |
 
 ## Documentos
 
@@ -77,7 +77,7 @@ P10/
 
 ## Video demostrativo
 
-URL: ⏱ PENDIENTE (lo graba la estudiante)
+URL: [https://drive.google.com/drive/folders/1kOchO-0QgwzYgSWx3mVyXL2yfm4uJ3GY?usp=sharing](https://drive.google.com/drive/folders/1kOchO-0QgwzYgSWx3mVyXL2yfm4uJ3GY?usp=sharing)
 
 Minutaje propuesto (5 a 8 minutos). Los minutos se ajustan al grabar:
 
